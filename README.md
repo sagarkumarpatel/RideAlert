@@ -48,3 +48,5 @@ The project consists of three main components:
 - **Phase 2:** Configured Prisma schema and PostgreSQL database.
 - **Phase 3:** Built the Android core using CameraX and ML Kit.
 - **Phase 4:** Integrated Android app with the Node.js backend for live End-to-End syncing.
+
+- **Phase 5:** Built Offline-First Room DB synchronization, advanced Audio/Haptic alerting, and Motion Sensor Fusion.

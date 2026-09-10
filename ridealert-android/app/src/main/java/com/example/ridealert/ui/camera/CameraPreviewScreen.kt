@@ -60,6 +60,49 @@ fun CameraPreviewScreen() {
     val coroutineScope = rememberCoroutineScope()
     var activeTripId by remember { mutableStateOf<String?>(null) }
     
+    var mediaPlayer: android.media.MediaPlayer? by remember { mutableStateOf(null) }
+    val driftDetector = remember { com.example.ridealert.detection.DriftPatternDetector(context) }
+    
+    DisposableEffect(lifecycleOwner) {
+        driftDetector.onDriftDetected = { isWarning ->
+            fatigueStateMachine.reportMotionPattern(isWarning)
+            
+            // Insert MOTION event locally and sync
+            if (activeTripId != null) {
+                coroutineScope.launch {
+                    try {
+                        val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
+                        db.fatigueEventDao().insertEvent(
+                            com.example.ridealert.data.local.FatigueEventEntity(
+                                tripId = activeTripId!!,
+                                timestamp = java.time.Instant.now().toString(),
+                                fatigueLevel = FatigueLevel.WARNING.name,
+                                primarySignal = "MOTION",
+                                eyeClosureScore = 0.0
+                            )
+                        )
+                        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
+                            .setConstraints(
+                                androidx.work.Constraints.Builder()
+                                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                                    .build()
+                            ).build()
+                        androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
+                        Log.d("CameraPreview", "Saved MOTION event locally!")
+                    } catch (e: Exception) {
+                        Log.e("CameraPreview", "Failed to save MOTION event", e)
+                    }
+                }
+            }
+        }
+        driftDetector.start()
+        
+        onDispose {
+            driftDetector.stop()
+            mediaPlayer?.release()
+        }
+    }
+    
     // Auto-start a trip for demo purposes
     LaunchedEffect(Unit) {
         try {
@@ -83,20 +126,58 @@ fun CameraPreviewScreen() {
         fatigueStateMachine.onStateChanged = { _, newState ->
             currentFatigueState = newState
             
-            // Send alert to the Node.js backend if state is dangerous
+            // --- Audio & Haptic Alerts ---
+            val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+            if (newState == FatigueLevel.CRITICAL) {
+                try {
+                    val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                    mediaPlayer?.release()
+                    mediaPlayer = android.media.MediaPlayer.create(context, uri)
+                    mediaPlayer?.isLooping = true
+                    mediaPlayer?.start()
+                } catch (e: Exception) {
+                    Log.e("CameraPreview", "Failed to play alarm", e)
+                }
+                
+                val pattern = longArrayOf(0, 500, 200, 500, 200, 500)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
+                } else {
+                    vibrator.vibrate(pattern, 0)
+                }
+            } else if (newState == FatigueLevel.NORMAL) {
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+                vibrator.cancel()
+            }
+            
+            // --- Offline Sync & Storage ---
             if ((newState == FatigueLevel.WARNING || newState == FatigueLevel.CRITICAL) && activeTripId != null) {
                 coroutineScope.launch {
                     try {
-                        val request = com.example.ridealert.data.FatigueEventRequest(
+                        val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
+                        val entity = com.example.ridealert.data.local.FatigueEventEntity(
+                            tripId = activeTripId!!,
                             timestamp = java.time.Instant.now().toString(),
                             fatigueLevel = newState.name,
                             primarySignal = "VISION",
                             eyeClosureScore = 1.0
                         )
-                        com.example.ridealert.data.ApiClient.instance.reportFatigueEvent(activeTripId!!, request)
-                        Log.d("CameraPreview", "Successfully synced $newState event to backend!")
+                        db.fatigueEventDao().insertEvent(entity)
+                        
+                        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
+                            .setConstraints(
+                                androidx.work.Constraints.Builder()
+                                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                                    .build()
+                            ).build()
+                        
+                        androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
+                        
+                        Log.d("CameraPreview", "Successfully saved $newState event locally and enqueued sync worker!")
                     } catch (e: Exception) {
-                        Log.e("CameraPreview", "Failed to sync event to backend", e)
+                        Log.e("CameraPreview", "Failed to save event locally", e)
                     }
                 }
             }

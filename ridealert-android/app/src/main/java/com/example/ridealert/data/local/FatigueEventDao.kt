@@ -7,11 +7,11 @@ import androidx.room.Query
 @Dao
 interface FatigueEventDao {
     @Insert
-    suspend fun insertEvent(event: FatigueEventEntity)
+    suspend fun insertEvent(event: FatigueEventEntity): Long
 
     @Query("SELECT * FROM fatigue_events")
     suspend fun getAllEvents(): List<FatigueEventEntity>
 
     @Query("DELETE FROM fatigue_events WHERE id IN (:ids)")
-    suspend fun deleteEvents(ids: List<Int>)
+    suspend fun deleteEvents(ids: List<Int>): Int
 }

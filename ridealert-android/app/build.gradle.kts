@@ -44,6 +44,10 @@ kotlin {
     jvmToolchain(17)
 }
 
+ksp {
+    arg("room.generateKotlin", "true")
+}
+
 dependencies {
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)

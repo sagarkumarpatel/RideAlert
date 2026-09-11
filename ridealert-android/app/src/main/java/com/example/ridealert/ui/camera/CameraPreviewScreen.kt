@@ -64,15 +64,35 @@ fun CameraPreviewScreen(driverId: String) {
     val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
     var currentLocation by remember { mutableStateOf<android.location.Location?>(null) }
     
-    // Periodically update location
-    LaunchedEffect(hasPermissions) {
+    // Actively update location
+    DisposableEffect(hasPermissions) {
+        var locationCallback: com.google.android.gms.location.LocationCallback? = null
         if (hasPermissions) {
             try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    currentLocation = location
+                val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                    com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+                ).setMinUpdateIntervalMillis(2000).build()
+                
+                locationCallback = object : com.google.android.gms.location.LocationCallback() {
+                    override fun onLocationResult(locationResult: com.google.android.gms.location.LocationResult) {
+                        currentLocation = locationResult.lastLocation
+                        Log.d("CameraPreview", "Updated Location: ${currentLocation?.latitude}, ${currentLocation?.longitude}")
+                    }
                 }
+                
+                fusedLocationClient.requestLocationUpdates(
+                    locationRequest,
+                    locationCallback,
+                    android.os.Looper.getMainLooper()
+                )
             } catch (e: SecurityException) {
                 Log.e("CameraPreview", "Location permission missing", e)
+            }
+        }
+        
+        onDispose {
+            locationCallback?.let {
+                fusedLocationClient.removeLocationUpdates(it)
             }
         }
     }
@@ -89,7 +109,7 @@ fun CameraPreviewScreen(driverId: String) {
                         db.fatigueEventDao().insertEvent(
                             com.example.ridealert.data.local.FatigueEventEntity(
                                 tripId = activeTripId!!,
-                                timestamp = java.time.Instant.now().toString(),
+                                timestamp = System.currentTimeMillis().toString(),
                                 fatigueLevel = FatigueLevel.WARNING.name,
                                 primarySignal = "MOTION",
                                 eyeClosureScore = 0.0,
@@ -175,7 +195,7 @@ fun CameraPreviewScreen(driverId: String) {
                         val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
                         val entity = com.example.ridealert.data.local.FatigueEventEntity(
                             tripId = activeTripId!!,
-                            timestamp = java.time.Instant.now().toString(),
+                            timestamp = System.currentTimeMillis().toString(),
                             fatigueLevel = newState.name,
                             primarySignal = "VISION",
                             eyeClosureScore = 1.0,

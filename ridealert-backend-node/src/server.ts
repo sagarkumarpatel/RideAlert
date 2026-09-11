@@ -128,10 +128,13 @@ app.post('/api/trips/:tripId/fatigue-events', async (req, res) => {
     const { tripId } = req.params;
     const { timestamp, fatigueLevel, primarySignal, lightCondition, eyeClosureScore, driftScore, latitude, longitude } = req.body;
     
+    // If timestamp is a numeric string (e.g., "1726090432134"), convert it to a number first
+    const parsedTimestamp = isNaN(Number(timestamp)) ? new Date(timestamp) : new Date(Number(timestamp));
+
     const event = await prisma.fatigueEvent.create({
       data: {
         tripId,
-        eventTimestamp: new Date(timestamp),
+        eventTimestamp: parsedTimestamp,
         fatigueLevel,
         primarySignal,
         lightCondition,
@@ -227,9 +230,7 @@ app.get('/api/fleet/incidents', authenticateJWT, async (req, res) => {
   try {
     const events = await prisma.fatigueEvent.findMany({
       where: {
-        fatigueLevel: { in: ['WARNING', 'CRITICAL'] },
-        latitude: { not: null },
-        longitude: { not: null }
+        fatigueLevel: { in: ['WARNING', 'CRITICAL'] }
       },
       include: {
         trip: {
@@ -244,6 +245,37 @@ app.get('/api/fleet/incidents', authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch map incidents' });
+  }
+});
+
+// 7. Get all drivers
+app.get('/api/fleet/drivers', authenticateJWT, async (req, res) => {
+  try {
+    const drivers = await prisma.driver.findMany({
+      include: {
+        _count: {
+          select: { trips: true }
+        },
+        trips: {
+          orderBy: { startTimestamp: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    const formattedDrivers = drivers.map(d => ({
+      id: d.id,
+      name: d.name,
+      defaultVehicleType: d.defaultVehicleType,
+      totalTrips: d._count.trips,
+      latestTripStatus: d.trips[0]?.status || 'INACTIVE',
+      latestTripTime: d.trips[0]?.startTimestamp || null
+    }));
+
+    res.json(formattedDrivers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch drivers' });
   }
 });
 

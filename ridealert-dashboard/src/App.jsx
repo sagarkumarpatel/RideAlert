@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import DashboardOverview from './features/dashboard/DashboardOverview';
+import DriversList from './features/dashboard/DriversList';
+import EventsList from './features/dashboard/EventsList';
 import Login from './features/auth/Login';
 import './index.css';
 
@@ -90,12 +92,12 @@ function App() {
         } />
         <Route path="/drivers" element={
           <ProtectedRoute>
-            <Placeholder title="Drivers List" />
+            <DriversList />
           </ProtectedRoute>
         } />
         <Route path="/events" element={
           <ProtectedRoute>
-            <Placeholder title="Fatigue Event Log" />
+            <EventsList />
           </ProtectedRoute>
         } />
       </Routes>

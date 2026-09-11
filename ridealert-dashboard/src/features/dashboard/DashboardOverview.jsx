@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getFleetSummary, getDriverFatigueTrend } from '../../api/client';
+import { getFleetSummary, getDriverFatigueTrend, getMapIncidents } from '../../api/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import IncidentMap from './IncidentMap';
 
@@ -20,14 +20,21 @@ export default function DashboardOverview() {
         setSummary(sumData);
         
         try {
-          // Attempt to fetch real trend data, gracefully fallback on failure
-          const trendRes = await getDriverFatigueTrend(DEMO_DRIVER_ID);
+          const [incidentsRes] = await Promise.all([
+            getMapIncidents().catch(() => [])
+          ]);
+          
+          let trendRes = { events: [] };
+          // If we have incidents, grab the driverId of the most recent one to show their trend
+          if (incidentsRes && incidentsRes.length > 0) {
+            const dynamicDriverId = incidentsRes[0].trip?.driverId || DEMO_DRIVER_ID;
+            trendRes = await getDriverFatigueTrend(dynamicDriverId).catch(() => ({ events: [] }));
+            setRecentEvents(incidentsRes);
+          } else {
+            setRecentEvents([]);
+          }
           
           if (trendRes.events && trendRes.events.length > 0) {
-            // Keep the raw events for the recent list (sort descending by time)
-            setRecentEvents([...trendRes.events].sort((a,b) => new Date(b.eventTimestamp) - new Date(a.eventTimestamp)));
-            
-            // Map events to chart-friendly format
             const mappedTrend = trendRes.events.map(e => ({
               time: new Date(e.eventTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
               level: e.fatigueLevel === 'CRITICAL' ? 3 : e.fatigueLevel === 'WARNING' ? 2 : 1
@@ -35,7 +42,6 @@ export default function DashboardOverview() {
             setTrendData(mappedTrend);
           } else {
             setTrendData(getMockTrendData());
-            setRecentEvents([]);
           }
         } catch (e) {
           setTrendData(getMockTrendData());
@@ -134,7 +140,7 @@ export default function DashboardOverview() {
             {recentEvents.length > 0 ? recentEvents.slice(0, 5).map(event => (
               <div key={event.id} className={`event-item ${event.fatigueLevel.toLowerCase()}`}>
                 <div>
-                  <div style={{fontWeight: 600}}>Driver: {DEMO_DRIVER_ID}</div>
+                  <div style={{fontWeight: 600}}>Driver: {event.trip?.driverId || 'Unknown'}</div>
                   <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>
                     {new Date(event.eventTimestamp).toLocaleTimeString()} • {event.primarySignal}
                   </div>

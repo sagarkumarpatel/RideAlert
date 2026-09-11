@@ -18,7 +18,7 @@ export default function Login({ setAuthToken }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ adminPin }),
+        body: JSON.stringify({ email: 'admin@ridealert.com', password: adminPin }),
       });
 
       const data = await response.json();

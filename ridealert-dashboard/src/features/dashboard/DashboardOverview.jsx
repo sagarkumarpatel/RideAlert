@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getFleetSummary, getDriverFatigueTrend } from '../../api/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import IncidentMap from './IncidentMap';
 
 export default function DashboardOverview() {
   const [summary, setSummary] = useState({ activeDrivers: 0, fatigueFlagsToday: 0 });
@@ -149,6 +150,11 @@ export default function DashboardOverview() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="glass-panel" style={{ marginTop: '24px', height: '400px' }}>
+        <h2 style={{marginTop: 0, marginBottom: '24px', fontSize: '1.2rem'}}>Live Incident Map</h2>
+        <IncidentMap events={recentEvents} />
       </div>
     </div>
   );

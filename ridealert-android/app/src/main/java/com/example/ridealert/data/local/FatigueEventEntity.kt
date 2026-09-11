@@ -10,5 +10,7 @@ data class FatigueEventEntity(
     val timestamp: String,
     val fatigueLevel: String,
     val primarySignal: String,
-    val eyeClosureScore: Double
+    val eyeClosureScore: Double,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

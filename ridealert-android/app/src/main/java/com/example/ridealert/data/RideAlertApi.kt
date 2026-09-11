@@ -17,7 +17,9 @@ data class FatigueEventRequest(
     val primarySignal: String = "VISION",
     val lightCondition: String = "DAYLIGHT",
     val eyeClosureScore: Double = 1.0,
-    val driftScore: Double = 0.0
+    val driftScore: Double = 0.0,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 data class FatigueEventResponse(val id: String)
 

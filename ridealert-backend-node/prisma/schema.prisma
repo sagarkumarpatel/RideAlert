@@ -94,6 +94,8 @@ model FatigueEvent {
   eyeClosureScore Decimal?
   driftScore      Decimal?
   lightCondition  String   @default("NORMAL") // NORMAL | LOW
+  latitude        Decimal?
+  longitude       Decimal?
   createdAt       DateTime @default(now())
 
   trip   Trip?   @relation(fields: [tripId], references: [id])

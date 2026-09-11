@@ -34,23 +34,22 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 @Composable
-fun CameraPreviewScreen() {
+fun CameraPreviewScreen(driverId: String) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    var hasCameraPermission by remember {
+    var hasPermissions by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         )
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasCameraPermission = isGranted
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasPermissions = permissions[Manifest.permission.CAMERA] == true && 
+                         permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
     }
 
     // --- Add state for tracking fatigue ---
@@ -62,6 +61,21 @@ fun CameraPreviewScreen() {
     
     var mediaPlayer: android.media.MediaPlayer? by remember { mutableStateOf(null) }
     val driftDetector = remember { com.example.ridealert.detection.DriftPatternDetector(context) }
+    val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
+    var currentLocation by remember { mutableStateOf<android.location.Location?>(null) }
+    
+    // Periodically update location
+    LaunchedEffect(hasPermissions) {
+        if (hasPermissions) {
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    currentLocation = location
+                }
+            } catch (e: SecurityException) {
+                Log.e("CameraPreview", "Location permission missing", e)
+            }
+        }
+    }
     
     DisposableEffect(lifecycleOwner) {
         driftDetector.onDriftDetected = { isWarning ->
@@ -78,7 +92,9 @@ fun CameraPreviewScreen() {
                                 timestamp = java.time.Instant.now().toString(),
                                 fatigueLevel = FatigueLevel.WARNING.name,
                                 primarySignal = "MOTION",
-                                eyeClosureScore = 0.0
+                                eyeClosureScore = 0.0,
+                                latitude = currentLocation?.latitude,
+                                longitude = currentLocation?.longitude
                             )
                         )
                         val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
@@ -109,7 +125,7 @@ fun CameraPreviewScreen() {
             // Use mock IDs matching the DB requirements
             val response = com.example.ridealert.data.ApiClient.instance.startTrip(
                 com.example.ridealert.data.TripCreateRequest(
-                    driverId = "mock-driver-123",
+                    driverId = driverId,
                     vehicleId = "mock-vehicle-456",
                     deviceId = "mock-device-789"
                 )
@@ -162,7 +178,9 @@ fun CameraPreviewScreen() {
                             timestamp = java.time.Instant.now().toString(),
                             fatigueLevel = newState.name,
                             primarySignal = "VISION",
-                            eyeClosureScore = 1.0
+                            eyeClosureScore = 1.0,
+                            latitude = currentLocation?.latitude,
+                            longitude = currentLocation?.longitude
                         )
                         db.fatigueEventDao().insertEvent(entity)
                         
@@ -186,12 +204,12 @@ fun CameraPreviewScreen() {
     // ----------------------------------------
 
     LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
+        if (!hasPermissions) {
+            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
 
-    if (hasCameraPermission) {
+    if (hasPermissions) {
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -286,10 +304,10 @@ fun CameraPreviewScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Camera permission is required for fatigue detection.")
+            Text("Camera and Location permissions are required for fatigue detection.")
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                Text("Grant Permission")
+            Button(onClick = { permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
+                Text("Grant Permissions")
             }
         }
     }

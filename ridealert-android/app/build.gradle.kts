@@ -92,8 +92,9 @@ dependencies {
   implementation(libs.androidx.camera.lifecycle)
   implementation(libs.androidx.camera.view)
 
-  // ML Kit Face Detection
+  // ML Kit Face Detection & Location
   implementation(libs.play.services.mlkit.face.detection)
+  implementation(libs.play.services.location)
 
   // Retrofit & OkHttp
   implementation(libs.retrofit)

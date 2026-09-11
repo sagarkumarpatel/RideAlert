@@ -15,7 +15,7 @@ import com.example.ridealert.ui.camera.CameraPreviewScreen
 
 @Composable
 fun MainScreen(
-  onItemClick: (NavKey) -> Unit,
+  driverId: String,
   modifier: Modifier = Modifier,
   viewModel: MainScreenViewModel = viewModel { MainScreenViewModel(DefaultDataRepository()) },
 ) {
@@ -25,7 +25,7 @@ fun MainScreen(
       // Blank
     }
     is MainScreenUiState.Success -> {
-      MainScreen(data = (state as MainScreenUiState.Success).data, modifier = modifier)
+      MainScreen(driverId = driverId, data = (state as MainScreenUiState.Success).data, modifier = modifier)
     }
     is MainScreenUiState.Error -> {
       Text("Error loading data: ${(state as MainScreenUiState.Error).throwable.message}")
@@ -34,18 +34,18 @@ fun MainScreen(
 }
 
 @Composable
-internal fun MainScreen(data: List<String>, modifier: Modifier = Modifier) {
-  CameraPreviewScreen()
+internal fun MainScreen(driverId: String, data: List<String>, modifier: Modifier = Modifier) {
+  CameraPreviewScreen(driverId = driverId)
 }
 
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
-  RideAlertTheme { MainScreen(listOf("Android")) }
+  RideAlertTheme { MainScreen(driverId = "demo-driver-123", data = listOf("Android")) }
 }
 
 @Preview(showBackground = true, widthDp = 340)
 @Composable
 fun MainScreenPortraitPreview() {
-  RideAlertTheme { MainScreen(listOf("Android")) }
+  RideAlertTheme { MainScreen(driverId = "demo-driver-123", data = listOf("Android")) }
 }

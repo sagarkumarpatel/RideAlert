@@ -50,3 +50,4 @@ The project consists of three main components:
 - **Phase 4:** Integrated Android app with the Node.js backend for live End-to-End syncing.
 
 - **Phase 5:** Built Offline-First Room DB synchronization, advanced Audio/Haptic alerting, and Motion Sensor Fusion.
+- **Phase 6:** Implemented JWT-based Driver/Admin authentication, FusedLocationProvider GPS tracking, and a Live React-Leaflet Map Dashboard.

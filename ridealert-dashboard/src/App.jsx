@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import DashboardOverview from './features/dashboard/DashboardOverview';
+import Login from './features/auth/Login';
 import './index.css';
 
 // SVG Icons
@@ -42,7 +43,9 @@ function Layout({ children }) {
         </div>
       </nav>
       
-      {children}
+      <div className="main-content-wrapper" style={{ flex: 1, overflow: 'auto' }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -60,15 +63,42 @@ const Placeholder = ({ title }) => (
 );
 
 function App() {
+  const [authToken, setAuthToken] = React.useState(localStorage.getItem('adminToken'));
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    setAuthToken(null);
+  };
+
+  const ProtectedRoute = ({ children }) => {
+    if (!authToken) {
+      return <Navigate to="/login" replace />;
+    }
+    return <Layout onLogout={handleLogout}>{children}</Layout>;
+  };
+
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<DashboardOverview />} />
-          <Route path="/drivers" element={<Placeholder title="Drivers List" />} />
-          <Route path="/events" element={<Placeholder title="Fatigue Event Log" />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/login" element={
+          authToken ? <Navigate to="/" replace /> : <Login setAuthToken={setAuthToken} />
+        } />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <DashboardOverview authToken={authToken} />
+          </ProtectedRoute>
+        } />
+        <Route path="/drivers" element={
+          <ProtectedRoute>
+            <Placeholder title="Drivers List" />
+          </ProtectedRoute>
+        } />
+        <Route path="/events" element={
+          <ProtectedRoute>
+            <Placeholder title="Fatigue Event Log" />
+          </ProtectedRoute>
+        } />
+      </Routes>
     </BrowserRouter>
   );
 }

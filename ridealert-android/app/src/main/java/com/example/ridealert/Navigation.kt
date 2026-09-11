@@ -10,17 +10,23 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.ridealert.ui.main.MainScreen
 
+import com.example.ridealert.ui.camera.LoginScreen
+
 @Composable
 fun MainNavigation() {
-  val backStack = rememberNavBackStack(Main)
+  val backStack = rememberNavBackStack(Login)
 
   NavDisplay(
     backStack = backStack,
     onBack = { backStack.removeLastOrNull() },
     entryProvider =
       entryProvider {
+        entry<Login> {
+          LoginScreen(onLoginSuccess = { driverId -> backStack.add(Main(driverId)) })
+        }
         entry<Main> {
-          MainScreen(onItemClick = { navKey -> backStack.add(navKey) }, modifier = Modifier.safeDrawingPadding().padding(16.dp))
+          val args = it as Main
+          MainScreen(driverId = args.driverId, modifier = Modifier.safeDrawingPadding().padding(16.dp))
         }
       },
   )

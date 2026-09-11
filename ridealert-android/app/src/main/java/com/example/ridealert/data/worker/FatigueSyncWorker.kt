@@ -29,7 +29,9 @@ class FatigueSyncWorker(
                     timestamp = event.timestamp,
                     fatigueLevel = event.fatigueLevel,
                     primarySignal = event.primarySignal,
-                    eyeClosureScore = event.eyeClosureScore
+                    eyeClosureScore = event.eyeClosureScore,
+                    latitude = event.latitude,
+                    longitude = event.longitude
                 )
                 
                 try {

@@ -169,17 +169,38 @@ app.post('/api/trips/:tripId/fatigue-events', async (req, res) => {
 // 4. Fleet summary
 app.get('/api/fleet/summary', authenticateJWT, async (req, res) => {
   try {
+    const queryDate = req.query.date as string;
+    let targetDate = new Date();
+    if (queryDate) {
+      targetDate = new Date(queryDate);
+    }
+    
+    // Set to start and end of the target day
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const activeTrips = await prisma.trip.count({
-      where: { status: 'ACTIVE' }
+      where: { 
+        status: 'ACTIVE',
+        // Note: For active drivers on historical days, a better approach might be checking if they had ANY trip on that day.
+        // For MVP, if it's today, we check ACTIVE. If historical, we just count trips on that day.
+        ...(queryDate && targetDate.toDateString() !== new Date().toDateString() ? {
+          startTimestamp: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        } : {})
+      }
     });
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const fatigueFlagsToday = await prisma.fatigueEvent.count({
+    const fatigueFlags = await prisma.fatigueEvent.count({
       where: {
         eventTimestamp: {
-          gte: today
+          gte: startOfDay,
+          lte: endOfDay
         },
         fatigueLevel: {
           in: ['WARNING', 'CRITICAL']
@@ -188,8 +209,8 @@ app.get('/api/fleet/summary', authenticateJWT, async (req, res) => {
     });
     
     res.json({
-      activeDrivers: activeTrips, // Using active trips as proxy for active drivers
-      fatigueFlagsToday
+      activeDrivers: activeTrips, // Using trips as proxy
+      fatigueFlagsToday: fatigueFlags
     });
   } catch (error) {
     console.error(error);
@@ -201,6 +222,16 @@ app.get('/api/fleet/summary', authenticateJWT, async (req, res) => {
 app.get('/api/drivers/:driverId/fatigue-trend', authenticateJWT, async (req, res) => {
   try {
     const { driverId } = req.params;
+    const queryDate = req.query.date as string;
+    
+    let targetDate = new Date();
+    if (queryDate) {
+      targetDate = new Date(queryDate);
+    }
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
     
     // In a real application, you would do a proper group by date
     // For MVP, we will just fetch events for this driver's trips and return them
@@ -208,6 +239,12 @@ app.get('/api/drivers/:driverId/fatigue-trend', authenticateJWT, async (req, res
       where: { driverId },
       include: {
         fatigueEvents: {
+          where: {
+            eventTimestamp: {
+              gte: startOfDay,
+              lte: endOfDay
+            }
+          },
           orderBy: { eventTimestamp: 'asc' }
         }
       }
@@ -228,9 +265,23 @@ app.get('/api/drivers/:driverId/fatigue-trend', authenticateJWT, async (req, res
 // 6. Get all map incidents
 app.get('/api/fleet/incidents', authenticateJWT, async (req, res) => {
   try {
+    const queryDate = req.query.date as string;
+    let targetDate = new Date();
+    if (queryDate) {
+      targetDate = new Date(queryDate);
+    }
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const events = await prisma.fatigueEvent.findMany({
       where: {
-        fatigueLevel: { in: ['WARNING', 'CRITICAL'] }
+        fatigueLevel: { in: ['WARNING', 'CRITICAL'] },
+        eventTimestamp: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
       },
       include: {
         trip: {
@@ -254,7 +305,7 @@ app.get('/api/fleet/drivers', authenticateJWT, async (req, res) => {
     const drivers = await prisma.driver.findMany({
       include: {
         _count: {
-          select: { trips: true }
+          select: { trips: true, alerts: true }
         },
         trips: {
           orderBy: { startTimestamp: 'desc' },
@@ -268,6 +319,7 @@ app.get('/api/fleet/drivers', authenticateJWT, async (req, res) => {
       name: d.name,
       defaultVehicleType: d.defaultVehicleType,
       totalTrips: d._count.trips,
+      totalAlerts: d._count.alerts,
       latestTripStatus: d.trips[0]?.status || 'INACTIVE',
       latestTripTime: d.trips[0]?.startTimestamp || null
     }));
@@ -276,6 +328,57 @@ app.get('/api/fleet/drivers', authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch drivers' });
+  }
+});
+
+// 8. Delete old data (older than 30 days)
+app.delete('/api/fleet/data/old', authenticateJWT, async (req: any, res: any) => {
+  try {
+    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Forbidden' });
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 30);
+    
+    // Delete events first, then trips (due to foreign keys). Prisma might cascade, but let's be explicit if needed.
+    // Assuming cascading deletes are set up in prisma for trips -> events, but let's delete events first just in case.
+    const deletedEvents = await prisma.fatigueEvent.deleteMany({
+      where: {
+        eventTimestamp: {
+          lt: cutoffDate
+        }
+      }
+    });
+    
+    const deletedTrips = await prisma.trip.deleteMany({
+      where: {
+        startTimestamp: {
+          lt: cutoffDate
+        }
+      }
+    });
+    
+    res.json({ success: true, message: `Deleted ${deletedEvents.count} events and ${deletedTrips.count} trips.` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete old data' });
+  }
+});
+
+// 9. Delete specific driver
+app.delete('/api/drivers/:driverId', authenticateJWT, async (req: any, res: any) => {
+  try {
+    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Forbidden' });
+    const { driverId } = req.params;
+    
+    // With cascading deletes, this will remove their trips and events.
+    await prisma.driver.delete({
+      where: { id: driverId }
+    });
+    
+    res.json({ success: true, message: 'Driver deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete driver' });
   }
 });
 

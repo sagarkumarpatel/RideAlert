@@ -37,7 +37,7 @@ function Layout({ children }) {
             <Icons.Dashboard /> Overview
           </Link>
           <Link to="/drivers" className={`nav-link ${location.pathname === '/drivers' ? 'active' : ''}`}>
-            <Icons.Drivers /> Drivers
+            <Icons.Drivers /> Manage Drivers
           </Link>
           <Link to="/events" className={`nav-link ${location.pathname === '/events' ? 'active' : ''}`}>
             <Icons.Activity /> Fatigue Events

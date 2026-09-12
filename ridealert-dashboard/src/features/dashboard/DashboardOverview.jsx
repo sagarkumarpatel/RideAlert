@@ -4,6 +4,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import IncidentMap from './IncidentMap';
 
 export default function DashboardOverview() {
+  const getTodayString = () => new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  
   const [summary, setSummary] = useState({ activeDrivers: 0, fatigueFlagsToday: 0 });
   const [trendData, setTrendData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,19 +19,19 @@ export default function DashboardOverview() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const sumData = await getFleetSummary();
+        const sumData = await getFleetSummary(selectedDate);
         setSummary(sumData);
         
         try {
           const [incidentsRes] = await Promise.all([
-            getMapIncidents().catch(() => [])
+            getMapIncidents(selectedDate).catch(() => [])
           ]);
           
           let trendRes = { events: [] };
           // If we have incidents, grab the driverId of the most recent one to show their trend
           if (incidentsRes && incidentsRes.length > 0) {
             const dynamicDriverId = incidentsRes[0].trip?.driverId || DEMO_DRIVER_ID;
-            trendRes = await getDriverFatigueTrend(dynamicDriverId).catch(() => ({ events: [] }));
+            trendRes = await getDriverFatigueTrend(dynamicDriverId, selectedDate).catch(() => ({ events: [] }));
             setRecentEvents(incidentsRes);
           } else {
             setRecentEvents([]);
@@ -54,10 +57,11 @@ export default function DashboardOverview() {
       }
     };
 
+    setLoading(true);
     fetchData();
     const intervalId = setInterval(fetchData, 3000); // Auto-refresh every 3 seconds
     return () => clearInterval(intervalId);
-  }, []);
+  }, [selectedDate]);
 
   const getMockTrendData = () => [
     { time: '08:00', level: 1 },
@@ -70,10 +74,31 @@ export default function DashboardOverview() {
 
   return (
     <div className="main-content">
-      <div className="header">
-        <h1>Fleet Dashboard</h1>
-        <div style={{color: 'var(--text-muted)'}}>
-          Live Monitoring Active
+      <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>Fleet Dashboard</h1>
+          <div style={{color: 'var(--text-muted)'}}>
+            {selectedDate === getTodayString() ? 'Live Monitoring Active' : `Viewing Historical Data: ${selectedDate}`}
+          </div>
+        </div>
+        <div className="date-filter" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label htmlFor="overview-date" style={{ fontWeight: '500' }}>Date:</label>
+          <input 
+            type="date" 
+            id="overview-date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            max={getTodayString()}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid var(--glass-border)',
+              background: 'var(--glass-bg)',
+              color: 'var(--text-color)',
+              outline: 'none',
+              fontFamily: 'inherit'
+            }}
+          />
         </div>
       </div>
 

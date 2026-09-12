@@ -15,23 +15,36 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-export const getFleetSummary = async () => {
-  const response = await client.get('/fleet/summary');
+export const getFleetSummary = async (date) => {
+  const url = date ? `/fleet/summary?date=${date}` : '/fleet/summary';
+  const response = await client.get(url);
   return response.data;
 };
 
-export const getDriverFatigueTrend = async (driverId) => {
-  const response = await client.get(`/drivers/${driverId}/fatigue-trend`);
+export const getDriverFatigueTrend = async (driverId, date) => {
+  const url = date ? `/drivers/${driverId}/fatigue-trend?date=${date}` : `/drivers/${driverId}/fatigue-trend`;
+  const response = await client.get(url);
   return response.data;
 };
 
-export const getMapIncidents = async () => {
-  const response = await client.get('/fleet/incidents');
+export const getMapIncidents = async (date) => {
+  const url = date ? `/fleet/incidents?date=${date}` : '/fleet/incidents';
+  const response = await client.get(url);
   return response.data;
 };
 
 export const getDrivers = async () => {
   const response = await client.get('/fleet/drivers');
+  return response.data;
+};
+
+export const deleteOldData = async () => {
+  const response = await client.delete('/fleet/data/old');
+  return response.data;
+};
+
+export const deleteDriver = async (driverId) => {
+  const response = await client.delete(`/drivers/${driverId}`);
   return response.data;
 };
 

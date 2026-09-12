@@ -2,13 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { getMapIncidents } from '../../api/client';
 
 export default function EventsList() {
+  const getTodayString = () => new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchEvents = async () => {
+      setLoading(true);
       try {
-        const data = await getMapIncidents();
+        const data = await getMapIncidents(selectedDate);
         setEvents(data);
       } catch (error) {
         console.error('Failed to fetch events', error);
@@ -18,12 +21,31 @@ export default function EventsList() {
     };
 
     fetchEvents();
-  }, []);
+  }, [selectedDate]);
 
   return (
     <div className="main-content">
-      <div className="header">
+      <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Fatigue Event Log</h1>
+        <div className="date-filter" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label htmlFor="events-date" style={{ fontWeight: '500' }}>Date:</label>
+          <input 
+            type="date" 
+            id="events-date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            max={getTodayString()}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid var(--glass-border)',
+              background: 'var(--glass-bg)',
+              color: 'var(--text-color)',
+              outline: 'none',
+              fontFamily: 'inherit'
+            }}
+          />
+        </div>
       </div>
       
       <div className="glass-panel">

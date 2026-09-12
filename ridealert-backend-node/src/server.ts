@@ -203,7 +203,7 @@ app.post('/api/trips', authenticateJWT, async (req, res) => {
 app.patch('/api/trips/:tripId/end', authenticateJWT, async (req, res) => {
   try {
     const { tripId } = req.params;
-    const { endTimestamp } = req.body;
+    const { endTimestamp } = req.body || {};
     
     const trip = await prisma.trip.update({
       where: { id: tripId },

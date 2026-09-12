@@ -280,19 +280,21 @@ app.get('/api/fleet/summary', authenticateJWT, async (req, res) => {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const activeTrips = await prisma.trip.count({
+    const activeTrips = await prisma.trip.findMany({
       where: { 
         status: 'ACTIVE',
-        // Note: For active drivers on historical days, a better approach might be checking if they had ANY trip on that day.
-        // For MVP, if it's today, we check ACTIVE. If historical, we just count trips on that day.
         ...(queryDate && targetDate.toDateString() !== new Date().toDateString() ? {
           startTimestamp: {
             gte: startOfDay,
             lte: endOfDay
           }
         } : {})
-      }
+      },
+      distinct: ['driverId'],
+      select: { driverId: true }
     });
+    
+    const uniqueActiveDriversCount = activeTrips.length;
     
     const fatigueFlags = await prisma.fatigueEvent.count({
       where: {
@@ -307,7 +309,7 @@ app.get('/api/fleet/summary', authenticateJWT, async (req, res) => {
     });
     
     res.json({
-      activeDrivers: activeTrips, // Using trips as proxy
+      activeDrivers: uniqueActiveDriversCount,
       fatigueFlagsToday: fatigueFlags
     });
   } catch (error) {

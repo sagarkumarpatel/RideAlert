@@ -138,21 +138,65 @@ fun CameraPreviewScreen(driverId: String) {
         }
     }
     
+    var showEmergencyOverlay by remember { mutableStateOf(false) }
+    var emergencyMediaPlayer: android.media.MediaPlayer? by remember { mutableStateOf(null) }
+
     DisposableEffect(lifecycleOwner) {
         driftDetector.onDriftDetected = { isWarning ->
             fatigueStateMachine.reportMotionPattern(isWarning)
             
-            // Insert MOTION event locally and sync
+            // --- Immediate Alarm, Vibration, and Toast for Shake/Fall ---
+            android.widget.Toast.makeText(context, "Emergency: Rapid Motion / Fall Detected!", android.widget.Toast.LENGTH_LONG).show()
+            
+            showEmergencyOverlay = true
+            
+            try {
+                val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                emergencyMediaPlayer?.release()
+                emergencyMediaPlayer = android.media.MediaPlayer.create(context, uri)
+                emergencyMediaPlayer?.isLooping = true
+                emergencyMediaPlayer?.start()
+            } catch (e: Exception) {
+                Log.e("CameraPreview", "Failed to play emergency alarm", e)
+            }
+            
+            val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+            val pattern = longArrayOf(0, 500, 200, 500, 200, 500)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
+            } else {
+                vibrator.vibrate(pattern, 0)
+            }
+
+            // Insert MOTION event locally and sync via Retrofit immediately
             val currentTripId = activeTripIdState.value
             if (currentTripId != null) {
                 coroutineScope.launch {
+                    val token = sessionManager.getAuthToken() ?: ""
+                    try {
+                        com.example.ridealert.data.ApiClient.instance.reportFatigueEvent(
+                            tripId = currentTripId,
+                            token = "Bearer $token",
+                            request = com.example.ridealert.data.FatigueEventRequest(
+                                timestamp = System.currentTimeMillis().toString(),
+                                fatigueLevel = FatigueLevel.CRITICAL.name,
+                                primarySignal = "MOTION",
+                                latitude = currentLocation?.latitude,
+                                longitude = currentLocation?.longitude
+                            )
+                        )
+                        Log.d("CameraPreview", "Emergency event synced immediately via Retrofit")
+                    } catch (e: Exception) {
+                        Log.e("CameraPreview", "Failed immediate sync via Retrofit", e)
+                    }
+
                     try {
                         val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
                         db.fatigueEventDao().insertEvent(
                             com.example.ridealert.data.local.FatigueEventEntity(
                                 tripId = currentTripId,
                                 timestamp = System.currentTimeMillis().toString(),
-                                fatigueLevel = FatigueLevel.WARNING.name,
+                                fatigueLevel = FatigueLevel.CRITICAL.name,
                                 primarySignal = "MOTION",
                                 eyeClosureScore = 0.0,
                                 latitude = currentLocation?.latitude,
@@ -178,6 +222,7 @@ fun CameraPreviewScreen(driverId: String) {
         onDispose {
             driftDetector.stop()
             mediaPlayer?.release()
+            emergencyMediaPlayer?.release()
         }
     }
     
@@ -224,9 +269,16 @@ fun CameraPreviewScreen(driverId: String) {
                 fatigueStateMachine.reset()
                 currentFatigueState = FatigueLevel.NORMAL
                 showCriticalOverlay = false
+                showEmergencyOverlay = false
+                
                 mediaPlayer?.stop()
                 mediaPlayer?.release()
                 mediaPlayer = null
+                
+                emergencyMediaPlayer?.stop()
+                emergencyMediaPlayer?.release()
+                emergencyMediaPlayer = null
+                
                 val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
                 vibrator.cancel()
                 isStoppingTrip = false
@@ -479,6 +531,41 @@ fun CameraPreviewScreen(driverId: String) {
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.Black)
                         ) {
                             Text("DISMISS", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                }
+            }
+
+            // Motion/Fall Emergency Red Banner Overlay
+            if (showEmergencyOverlay) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Red.copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "EMERGENCY!\nMOTION / FALL DETECTED!",
+                            color = Color.White,
+                            style = MaterialTheme.typography.displayMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { 
+                                showEmergencyOverlay = false
+                                emergencyMediaPlayer?.stop()
+                                emergencyMediaPlayer?.release()
+                                emergencyMediaPlayer = null
+                                
+                                val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+                                vibrator.cancel()
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.Black)
+                        ) {
+                            Text("DISMISS ALARM", color = Color.White, style = MaterialTheme.typography.titleLarge)
                         }
                     }
                 }

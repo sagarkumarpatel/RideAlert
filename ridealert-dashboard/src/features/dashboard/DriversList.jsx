@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getDrivers, deleteOldData, deleteDriver } from '../../api/client';
 
 export default function DriversList() {
@@ -90,7 +91,11 @@ export default function DriversList() {
               <tbody>
                 {drivers.map((driver) => (
                   <tr key={driver.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '16px', fontWeight: 500 }}>{driver.id}</td>
+                    <td style={{ padding: '16px', fontWeight: 500 }}>
+                      <Link to={`/drivers/${driver.id}`} style={{ color: '#3b82f6', textDecoration: 'none' }}>
+                        {driver.id}
+                      </Link>
+                    </td>
                     <td style={{ padding: '16px' }}>{driver.name}</td>
                     <td style={{ padding: '16px' }}>{driver.totalTrips}</td>
                     <td style={{ padding: '16px' }}>{driver.totalAlerts || 0}</td>

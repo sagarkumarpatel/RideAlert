@@ -27,6 +27,12 @@ export const getDriverFatigueTrend = async (driverId, date) => {
   return response.data;
 };
 
+export const getDriverOverview = async (driverId, date) => {
+  const url = date ? `/drivers/${driverId}/overview?date=${date}` : `/drivers/${driverId}/overview`;
+  const response = await client.get(url);
+  return response.data;
+};
+
 export const getMapIncidents = async (date) => {
   const url = date ? `/fleet/incidents?date=${date}` : '/fleet/incidents';
   const response = await client.get(url);

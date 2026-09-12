@@ -262,6 +262,108 @@ app.get('/api/drivers/:driverId/fatigue-trend', authenticateJWT, async (req, res
   }
 });
 
+// 5.5 Driver Overview (Driver Details Dashboard)
+app.get('/api/drivers/:driverId/overview', authenticateJWT, async (req: any, res: any) => {
+  try {
+    const { driverId } = req.params;
+    const queryDate = req.query.date as string;
+    
+    let targetDate = new Date();
+    if (queryDate) {
+      targetDate = new Date(queryDate);
+    }
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const driver = await prisma.driver.findUnique({
+      where: { id: driverId }
+    });
+
+    if (!driver) {
+      return res.status(404).json({ error: 'Driver not found' });
+    }
+
+    const trips = await prisma.trip.findMany({
+      where: { 
+        driverId,
+        startTimestamp: {
+          lte: endOfDay
+        },
+        OR: [
+          { endTimestamp: null },
+          { endTimestamp: { gte: startOfDay } }
+        ]
+      },
+      include: {
+        fatigueEvents: {
+          where: {
+            eventTimestamp: {
+              gte: startOfDay,
+              lte: endOfDay
+            }
+          },
+          orderBy: { eventTimestamp: 'desc' }
+        }
+      }
+    });
+
+    const isToday = queryDate ? new Date(queryDate).toDateString() === new Date().toDateString() : true;
+    
+    // Status is active if there is any active trip TODAY, 
+    // or if historical, if they had ANY trip that day.
+    let status = 'INACTIVE';
+    if (isToday) {
+      status = trips.some(t => t.status === 'ACTIVE') ? 'ACTIVE' : 'INACTIVE';
+    } else {
+      status = trips.length > 0 ? 'ACTIVE' : 'INACTIVE';
+    }
+
+    const events = trips.flatMap(t => t.fatigueEvents);
+    const sortedEvents = events.sort((a, b) => b.eventTimestamp.getTime() - a.eventTimestamp.getTime());
+    
+    // Map incidents need the trip and driver attached to conform with the frontend IncidentMap
+    const incidents = sortedEvents
+      .filter(e => e.fatigueLevel === 'WARNING' || e.fatigueLevel === 'CRITICAL')
+      .map(e => ({
+        ...e,
+        trip: {
+          id: e.tripId,
+          driverId,
+          driver: { name: driver.name }
+        }
+      }));
+
+    const fatigueFlags = incidents.length;
+    const criticalEvents = incidents.filter(e => e.fatigueLevel === 'CRITICAL').length;
+    
+    // Trend data needs to be sorted ascending for the chart
+    const trendEvents = [...sortedEvents].sort((a, b) => a.eventTimestamp.getTime() - b.eventTimestamp.getTime());
+
+    res.json({
+      driver: {
+        id: driver.id,
+        name: driver.name,
+        status
+      },
+      date: startOfDay.toISOString().split('T')[0],
+      summary: {
+        fatigueFlags,
+        criticalEvents,
+        totalTrips: trips.length
+      },
+      fatigueTrend: { events: trendEvents },
+      recentAlerts: incidents, // using incidents for recent alerts since they are filtered to warning/critical
+      incidents: incidents
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch driver overview' });
+  }
+});
+
 // 6. Get all map incidents
 app.get('/api/fleet/incidents', authenticateJWT, async (req, res) => {
   try {
@@ -376,8 +478,11 @@ app.delete('/api/drivers/:driverId', authenticateJWT, async (req: any, res: any)
     });
     
     res.json({ success: true, message: 'Driver deleted successfully' });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Driver not found or already deleted' });
+    }
+    console.error('Delete Driver Error:', error);
     res.status(500).json({ error: 'Failed to delete driver' });
   }
 });

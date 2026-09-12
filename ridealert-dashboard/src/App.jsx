@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import DashboardOverview from './features/dashboard/DashboardOverview';
+import DriverOverview from './features/dashboard/DriverOverview';
 import DriversList from './features/dashboard/DriversList';
 import EventsList from './features/dashboard/EventsList';
 import Login from './features/auth/Login';
@@ -93,6 +94,11 @@ function App() {
         <Route path="/drivers" element={
           <ProtectedRoute>
             <DriversList />
+          </ProtectedRoute>
+        } />
+        <Route path="/drivers/:driverId" element={
+          <ProtectedRoute>
+            <DriverOverview />
           </ProtectedRoute>
         } />
         <Route path="/events" element={

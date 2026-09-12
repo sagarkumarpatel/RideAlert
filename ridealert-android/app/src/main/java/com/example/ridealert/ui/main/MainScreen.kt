@@ -3,6 +3,10 @@ package com.example.ridealert.ui.main
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.DriveEta
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.ridealert.ui.camera.CameraPreviewScreen
@@ -14,24 +18,42 @@ fun MainScreen(driverId: String, modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     label = { Text("Profile") },
-                    icon = { Text("👤") }
+                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.secondary,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     label = { Text("Drive") },
-                    icon = { Text("📷") }
+                    icon = { Icon(Icons.Default.DriveEta, contentDescription = "Drive") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.secondary,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
                     label = { Text("Activity") },
-                    icon = { Text("📊") }
+                    icon = { Icon(Icons.Default.Assessment, contentDescription = "Activity") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.secondary,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 )
             }
         }

@@ -450,22 +450,44 @@ fun CameraPreviewScreen(driverId: String) {
             // Overlay UI - Update based on fatigue state
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .fillMaxSize()
                     .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
+                // TOP: Alerts Banner
                 val state = latestEyeState
-                if (state != null && activeTripId != null) {
-                    if (state.isWarning || state.isMicrosleep || state.isEyesClosed) {
-                        Text(
-                            text = if (state.isMicrosleep) "Micro-sleep Warning!" else "Eye-closure detected",
-                            color = if (state.isMicrosleep) Color.Red else Color(0xFFFFA500), // Orange
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                val showWarningBanner = (state != null && activeTripId != null && (state.isWarning || state.isMicrosleep || state.isEyesClosed))
+                
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showWarningBanner,
+                    enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -40 }) + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -40 }) + androidx.compose.animation.fadeOut()
+                ) {
+                    if (state != null) {
+                        val isUrgent = state.isMicrosleep
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = if (isUrgent) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                                )
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isUrgent) "Micro-sleep Warning!" else "Eye-closure detected",
+                                color = if (isUrgent) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            )
+                        }
                     }
                 }
 
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // BOTTOM: Driving Controls
                 if (activeTripId != null) {
                     val statusText = when (currentFatigueState) {
                         FatigueLevel.NORMAL -> "Driver Monitoring Active"
@@ -473,53 +495,90 @@ fun CameraPreviewScreen(driverId: String) {
                         FatigueLevel.CRITICAL -> "WAKE UP!"
                     }
                     val textColor = when (currentFatigueState) {
-                        FatigueLevel.NORMAL -> Color.Green
-                        FatigueLevel.WARNING -> Color.Yellow
-                        FatigueLevel.CRITICAL -> Color.Red
+                        FatigueLevel.NORMAL -> MaterialTheme.colorScheme.primary
+                        FatigueLevel.WARNING -> Color(0xFFFFA500)
+                        FatigueLevel.CRITICAL -> MaterialTheme.colorScheme.error
                     }
     
                     Text(
                         text = statusText,
                         color = textColor,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    Button(onClick = { stopTrip() }, enabled = !isStoppingTrip, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
+                    val scale by infiniteTransition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 1.05f,
+                        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                            animation = androidx.compose.animation.core.tween(1000),
+                            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                        )
+                    )
+
+                    Button(
+                        onClick = { stopTrip() }, 
+                        enabled = !isStoppingTrip, 
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp)
+                            .androidx.compose.ui.draw.scale(scale),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
                         if (isStoppingTrip) {
-                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onError)
                         } else {
-                            Text("Stop Driving", color = Color.White)
+                            Text(
+                                text = "Stop Driving", 
+                                color = MaterialTheme.colorScheme.onError,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            )
                         }
                     }
                 } else {
-                    Button(onClick = { startTrip() }, enabled = !isStartingTrip) {
+                    Button(
+                        onClick = { startTrip() }, 
+                        enabled = !isStartingTrip,
+                        modifier = Modifier.fillMaxWidth().height(64.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
                         if (isStartingTrip) {
-                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                         } else {
-                            Text("Start Driving")
+                            Text(
+                                text = "Start Driving",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            )
                         }
                     }
                 }
             }
             
             // Critical Red Banner Overlay
-            if (showCriticalOverlay) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showCriticalOverlay,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut()
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Red.copy(alpha = 0.85f)),
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "WAKE UP!\nDROWSINESS DETECTED!",
-                            color = Color.White,
-                            style = MaterialTheme.typography.displayMedium,
+                            color = MaterialTheme.colorScheme.onError,
+                            style = MaterialTheme.typography.displayMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.padding(16.dp)
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
                         Button(
                             onClick = { 
                                 fatigueStateMachine.reset()
@@ -528,31 +587,37 @@ fun CameraPreviewScreen(driverId: String) {
                                 mediaPlayer?.release()
                                 mediaPlayer = null
                             },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.Black)
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            modifier = Modifier.height(56.dp).padding(horizontal = 32.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onError)
                         ) {
-                            Text("DISMISS", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                            Text("DISMISS ALARM", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                         }
                     }
                 }
             }
 
             // Motion/Fall Emergency Red Banner Overlay
-            if (showEmergencyOverlay) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showEmergencyOverlay,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut()
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Red.copy(alpha = 0.85f)),
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "EMERGENCY!\nMOTION / FALL DETECTED!",
-                            color = Color.White,
-                            style = MaterialTheme.typography.displayMedium,
+                            text = "EMERGENCY!\nMOTION DETECTED!",
+                            color = MaterialTheme.colorScheme.onError,
+                            style = MaterialTheme.typography.displayMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.padding(16.dp)
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
                         Button(
                             onClick = { 
                                 showEmergencyOverlay = false
@@ -563,9 +628,11 @@ fun CameraPreviewScreen(driverId: String) {
                                 val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
                                 vibrator.cancel()
                             },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.Black)
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            modifier = Modifier.height(56.dp).padding(horizontal = 32.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onError)
                         ) {
-                            Text("DISMISS ALARM", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                            Text("DISMISS ALARM", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                         }
                     }
                 }

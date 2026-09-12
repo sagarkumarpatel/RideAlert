@@ -56,15 +56,15 @@ export default function AddDriver() {
           </div>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Address</label>
-            <input value={newDriver.address} onChange={e => setNewDriver({...newDriver, address: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg-tertiary)', color: '#fff' }} />
+            <input required value={newDriver.address} onChange={e => setNewDriver({...newDriver, address: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg-tertiary)', color: '#fff' }} />
           </div>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Personal Contact</label>
-            <input value={newDriver.personalContact} onChange={e => setNewDriver({...newDriver, personalContact: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg-tertiary)', color: '#fff' }} />
+            <input required value={newDriver.personalContact} onChange={e => setNewDriver({...newDriver, personalContact: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg-tertiary)', color: '#fff' }} />
           </div>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Parent Contact</label>
-            <input value={newDriver.parentContact} onChange={e => setNewDriver({...newDriver, parentContact: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg-tertiary)', color: '#fff' }} />
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Emergency Contact</label>
+            <input required value={newDriver.parentContact} onChange={e => setNewDriver({...newDriver, parentContact: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg-tertiary)', color: '#fff' }} />
           </div>
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>

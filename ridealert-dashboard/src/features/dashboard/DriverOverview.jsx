@@ -59,11 +59,35 @@ export default function DriverOverview() {
       </div>
       
       <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ marginBottom: '4px' }}>Driver Overview</h1>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Name: <strong style={{ color: 'var(--text-color)' }}>{driverInfo.name}</strong></span>
-            <span style={{ color: 'var(--text-muted)' }}>ID: <strong style={{ color: 'var(--text-color)' }}>{driverInfo.id}</strong></span>
+        <div style={{ flex: 1, marginRight: '24px' }}>
+          <h1 style={{ marginBottom: '16px' }}>Driver Overview</h1>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: 'var(--glass-bg)', padding: '20px', borderRadius: '12px', border: '1px solid var(--glass-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+            <div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Name</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '1.1rem' }}>{driverInfo.name || '-'}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Driver ID</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '1.1rem' }}>{driverInfo.id || '-'}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Contact</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '1.1rem' }}>{driverInfo.personalContact || '-'}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Emergency Contact</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '1.1rem' }}>{driverInfo.parentContact || '-'}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Address</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '1.1rem' }}>{driverInfo.address || '-'}</div>
+            </div>
+            <div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Valid Licence</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '1.1rem' }}>
+                {driverInfo.hasLicence ? '✅ Yes' : '❌ No'}
+              </div>
+            </div>
           </div>
         </div>
         <div className="date-filter" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

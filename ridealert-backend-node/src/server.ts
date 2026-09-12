@@ -59,6 +59,10 @@ app.post('/api/drivers', authenticateJWT, async (req: any, res: any) => {
     
     const { driverId, name, address, personalContact, parentContact, hasLicence } = req.body;
     
+    if (!driverId || !name || !address || !personalContact || !parentContact) {
+      return res.status(400).json({ error: 'All fields (Driver ID, Name, Address, Personal Contact, Parent Contact) are required.' });
+    }
+    
     const driver = await prisma.driver.create({
       data: {
         id: driverId,
@@ -66,7 +70,7 @@ app.post('/api/drivers', authenticateJWT, async (req: any, res: any) => {
         address,
         personalContact,
         parentContact,
-        hasLicence,
+        hasLicence: !!hasLicence,
         defaultVehicleType: 'TWO_WHEELER'
       }
     });
@@ -439,7 +443,11 @@ app.get('/api/drivers/:driverId/overview', authenticateJWT, async (req: any, res
       driver: {
         id: driver.id,
         name: driver.name,
-        status
+        status,
+        address: driver.address,
+        personalContact: driver.personalContact,
+        parentContact: driver.parentContact,
+        hasLicence: driver.hasLicence
       },
       date: startOfDay.toISOString().split('T')[0],
       summary: {

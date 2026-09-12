@@ -4,7 +4,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import IncidentMap from './IncidentMap';
 
 export default function DashboardOverview() {
-  const getTodayString = () => new Date().toISOString().split('T')[0];
+  const getTodayString = () => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+  };
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   
   const [summary, setSummary] = useState({ activeDrivers: 0, fatigueFlagsToday: 0 });

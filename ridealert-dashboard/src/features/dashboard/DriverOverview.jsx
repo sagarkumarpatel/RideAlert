@@ -7,7 +7,11 @@ import IncidentMap from './IncidentMap';
 export default function DriverOverview() {
   const { driverId } = useParams();
   
-  const getTodayString = () => new Date().toISOString().split('T')[0];
+  const getTodayString = () => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+  };
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   
   const [driverInfo, setDriverInfo] = useState({ id: driverId, name: 'Loading...', status: 'INACTIVE' });

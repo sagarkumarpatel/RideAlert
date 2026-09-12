@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { getMapIncidents } from '../../api/client';
 
 export default function EventsList() {
-  const getTodayString = () => new Date().toISOString().split('T')[0];
+  const getTodayString = () => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+  };
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);

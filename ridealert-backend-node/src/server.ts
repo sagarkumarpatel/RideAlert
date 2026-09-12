@@ -42,53 +42,147 @@ app.post('/api/auth/admin-login', async (req, res) => {
 });
 
 app.post('/api/auth/driver-login', async (req, res) => {
-  // For MVP, drivers can log in with just their ID
   const { driverId } = req.body;
   const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+  
   if (!driver) {
-    // Auto-create for demo purposes
-    await prisma.driver.create({ data: { id: driverId, name: 'Driver ' + driverId, defaultVehicleType: 'TWO_WHEELER' } });
+    return res.status(401).json({ error: 'No driver found matching this Driver ID. Please contact your Fleet Manager.' });
   }
+  
   const token = jwt.sign({ role: 'DRIVER', driverId }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ token, driverId, name: driver?.name || ('Driver ' + driverId) });
+  res.json({ token, driverId, name: driver.name });
+});
+
+app.post('/api/drivers', authenticateJWT, async (req: any, res: any) => {
+  try {
+    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Forbidden' });
+    
+    const { driverId, name, address, personalContact, parentContact, hasLicence } = req.body;
+    
+    const driver = await prisma.driver.create({
+      data: {
+        id: driverId,
+        name,
+        address,
+        personalContact,
+        parentContact,
+        hasLicence,
+        defaultVehicleType: 'TWO_WHEELER'
+      }
+    });
+    
+    res.json({ success: true, driver });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to create driver' });
+  }
+});
+
+app.get('/api/drivers/me', authenticateJWT, async (req: any, res: any) => {
+  try {
+    if (req.user?.role !== 'DRIVER') return res.status(403).json({ error: 'Forbidden' });
+    const driverId = req.user.driverId;
+    
+    const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+    if (!driver) return res.status(404).json({ error: 'Driver not found' });
+    
+    res.json(driver);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch driver profile' });
+  }
+});
+
+app.get('/api/drivers/me/overview', authenticateJWT, async (req: any, res: any) => {
+  try {
+    if (req.user?.role !== 'DRIVER') return res.status(403).json({ error: 'Forbidden' });
+    const driverId = req.user.driverId;
+    const queryDate = req.query.date as string;
+    
+    let targetDate = new Date();
+    if (queryDate) {
+      targetDate = new Date(queryDate);
+    }
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const trips = await prisma.trip.findMany({
+      where: { 
+        driverId,
+        startTimestamp: { lte: endOfDay },
+        OR: [
+          { endTimestamp: null },
+          { endTimestamp: { gte: startOfDay } }
+        ]
+      },
+      include: {
+        fatigueEvents: {
+          where: {
+            eventTimestamp: { gte: startOfDay, lte: endOfDay }
+          },
+          orderBy: { eventTimestamp: 'desc' }
+        }
+      }
+    });
+
+    const events = trips.flatMap(t => t.fatigueEvents);
+    const sortedEvents = events.sort((a, b) => b.eventTimestamp.getTime() - a.eventTimestamp.getTime());
+    
+    const incidents = sortedEvents.filter(e => e.fatigueLevel === 'WARNING' || e.fatigueLevel === 'CRITICAL');
+    const fatigueFlags = incidents.length;
+    const criticalEvents = incidents.filter(e => e.fatigueLevel === 'CRITICAL').length;
+    const trendEvents = [...sortedEvents].sort((a, b) => a.eventTimestamp.getTime() - b.eventTimestamp.getTime());
+
+    res.json({
+      summary: {
+        fatigueFlags,
+        criticalEvents,
+        totalTrips: trips.length
+      },
+      fatigueTrend: { events: trendEvents },
+      recentAlerts: incidents
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch driver overview' });
+  }
 });
 
 // API Endpoints
 
 // 1. Start a trip
-app.post('/api/trips', async (req, res) => {
+app.post('/api/trips', authenticateJWT, async (req, res) => {
   try {
     const { driverId, vehicleId, deviceId, startTimestamp } = req.body;
     
-    // Auto-create reference data for the MVP to satisfy foreign key constraints
-    if (driverId) {
-      await prisma.driver.upsert({
-        where: { id: driverId },
-        update: {},
-        create: { id: driverId, name: 'Demo Driver', defaultVehicleType: 'TWO_WHEELER' }
-      });
-    }
+    // Remove auto-create reference data for the MVP to satisfy strict foreign key constraints
     
+    let createdVehicleId = null;
     if (vehicleId) {
-      await prisma.vehicle.upsert({
-        where: { registrationNumber: vehicleId }, // Wait, id is uuid by default, registrationNumber is unique
+      const vehicle = await prisma.vehicle.upsert({
+        where: { registrationNumber: vehicleId }, 
         update: {},
-        create: { id: vehicleId, registrationNumber: vehicleId, vehicleType: 'TWO_WHEELER' }
+        create: { registrationNumber: vehicleId, vehicleType: 'TWO_WHEELER' }
       });
+      createdVehicleId = vehicle.id;
     }
     
+    let createdDeviceId = null;
     if (deviceId) {
-      await prisma.device.upsert({
-        where: { deviceIdentifier: deviceId }, // deviceIdentifier is unique
+      const device = await prisma.device.upsert({
+        where: { deviceIdentifier: deviceId },
         update: {},
-        create: { id: deviceId, deviceIdentifier: deviceId, driverId }
+        create: { deviceIdentifier: deviceId, driverId }
       });
+      createdDeviceId = device.id;
     }
     const trip = await prisma.trip.create({
       data: {
         driverId,
-        vehicleId,
-        deviceId,
+        vehicleId: createdVehicleId,
+        deviceId: createdDeviceId,
         startTimestamp: startTimestamp ? new Date(startTimestamp) : new Date(),
         status: 'ACTIVE'
       }
@@ -102,7 +196,7 @@ app.post('/api/trips', async (req, res) => {
 });
 
 // 2. End a trip
-app.patch('/api/trips/:tripId/end', async (req, res) => {
+app.patch('/api/trips/:tripId/end', authenticateJWT, async (req, res) => {
   try {
     const { tripId } = req.params;
     const { endTimestamp } = req.body;
@@ -123,7 +217,7 @@ app.patch('/api/trips/:tripId/end', async (req, res) => {
 });
 
 // 3. Log a fatigue event
-app.post('/api/trips/:tripId/fatigue-events', async (req, res) => {
+app.post('/api/trips/:tripId/fatigue-events', authenticateJWT, async (req, res) => {
   try {
     const { tripId } = req.params;
     const { timestamp, fatigueLevel, primarySignal, lightCondition, eyeClosureScore, driftScore, latitude, longitude } = req.body;

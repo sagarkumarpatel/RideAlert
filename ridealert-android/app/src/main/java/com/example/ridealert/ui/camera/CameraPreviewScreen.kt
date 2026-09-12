@@ -13,6 +13,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.activity.result.IntentSenderRequest
 import androidx.compose.material3.Button
@@ -57,8 +58,14 @@ fun CameraPreviewScreen(driverId: String) {
     val fatigueStateMachine = remember { FatigueStateMachine() }
     val eyeStateTracker = remember { EyeStateTracker() }
     var currentFatigueState by remember { mutableStateOf(FatigueLevel.NORMAL) }
+    var latestEyeState by remember { mutableStateOf<com.example.ridealert.detection.EyeStateResult?>(null) }
+    var showCriticalOverlay by remember { mutableStateOf(false) }
+    
     val coroutineScope = rememberCoroutineScope()
-    var activeTripId by remember { mutableStateOf<String?>(null) }
+    val activeTripIdState = remember { mutableStateOf<String?>(null) }
+    val activeTripId = activeTripIdState.value
+    
+    val sessionManager = remember { com.example.ridealert.data.local.SessionManager(context) }
     
     var mediaPlayer: android.media.MediaPlayer? by remember { mutableStateOf(null) }
     val driftDetector = remember { com.example.ridealert.detection.DriftPatternDetector(context) }
@@ -136,13 +143,14 @@ fun CameraPreviewScreen(driverId: String) {
             fatigueStateMachine.reportMotionPattern(isWarning)
             
             // Insert MOTION event locally and sync
-            if (activeTripId != null) {
+            val currentTripId = activeTripIdState.value
+            if (currentTripId != null) {
                 coroutineScope.launch {
                     try {
                         val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
                         db.fatigueEventDao().insertEvent(
                             com.example.ridealert.data.local.FatigueEventEntity(
-                                tripId = activeTripId!!,
+                                tripId = currentTripId,
                                 timestamp = System.currentTimeMillis().toString(),
                                 fatigueLevel = FatigueLevel.WARNING.name,
                                 primarySignal = "MOTION",
@@ -173,22 +181,56 @@ fun CameraPreviewScreen(driverId: String) {
         }
     }
     
-    // Auto-start a trip for demo purposes
-    LaunchedEffect(Unit) {
-        try {
-            // Use mock IDs matching the DB requirements
-            val response = com.example.ridealert.data.ApiClient.instance.startTrip(
-                com.example.ridealert.data.TripCreateRequest(
-                    driverId = driverId,
-                    vehicleId = "mock-vehicle-456",
-                    deviceId = "mock-device-789"
+    // Trip lifecycle management
+    var isStartingTrip by remember { mutableStateOf(false) }
+    var isStoppingTrip by remember { mutableStateOf(false) }
+    
+    fun startTrip() {
+        if (isStartingTrip) return
+        isStartingTrip = true
+        coroutineScope.launch {
+            try {
+                val token = sessionManager.getAuthToken() ?: ""
+                val response = com.example.ridealert.data.ApiClient.instance.startTrip(
+                    token = "Bearer $token",
+                    request = com.example.ridealert.data.TripCreateRequest(
+                        driverId = driverId,
+                        vehicleId = "mock-vehicle-456",
+                        deviceId = "mock-device-789"
+                    )
                 )
-            )
-            activeTripId = response.tripId
-            Log.d("CameraPreview", "Started Trip: ${response.tripId}")
-        } catch (e: Exception) {
-            Log.e("CameraPreview", "Failed to start demo trip. Make sure the Node server is running on the correct IP.", e)
-            // For emulator testing, you might need to change BASE_URL to your laptop's local IP if testing on a physical phone.
+                activeTripIdState.value = response.tripId
+                Log.d("CameraPreview", "Started Trip: ${response.tripId}")
+            } catch (e: Exception) {
+                Log.e("CameraPreview", "Failed to start trip", e)
+            } finally {
+                isStartingTrip = false
+            }
+        }
+    }
+    
+    fun stopTrip() {
+        if (isStoppingTrip || activeTripId == null) return
+        isStoppingTrip = true
+        coroutineScope.launch {
+            try {
+                val token = sessionManager.getAuthToken() ?: ""
+                com.example.ridealert.data.ApiClient.instance.endTrip(activeTripId!!, "Bearer $token")
+                Log.d("CameraPreview", "Ended Trip: $activeTripId")
+            } catch (e: Exception) {
+                Log.e("CameraPreview", "Failed to end trip", e)
+            } finally {
+                activeTripIdState.value = null
+                fatigueStateMachine.reset()
+                currentFatigueState = FatigueLevel.NORMAL
+                showCriticalOverlay = false
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+                val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+                vibrator.cancel()
+                isStoppingTrip = false
+            }
         }
     }
     
@@ -199,6 +241,7 @@ fun CameraPreviewScreen(driverId: String) {
             // --- Audio & Haptic Alerts ---
             val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
             if (newState == FatigueLevel.CRITICAL) {
+                showCriticalOverlay = true
                 try {
                     val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
                     mediaPlayer?.release()
@@ -216,6 +259,7 @@ fun CameraPreviewScreen(driverId: String) {
                     vibrator.vibrate(pattern, 0)
                 }
             } else if (newState == FatigueLevel.NORMAL) {
+                showCriticalOverlay = false
                 mediaPlayer?.stop()
                 mediaPlayer?.release()
                 mediaPlayer = null
@@ -223,12 +267,13 @@ fun CameraPreviewScreen(driverId: String) {
             }
             
             // --- Offline Sync & Storage ---
-            if ((newState == FatigueLevel.WARNING || newState == FatigueLevel.CRITICAL) && activeTripId != null) {
+            val currentTripId = activeTripIdState.value
+            if ((newState == FatigueLevel.WARNING || newState == FatigueLevel.CRITICAL) && currentTripId != null) {
                 coroutineScope.launch {
                     try {
                         val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
                         val entity = com.example.ridealert.data.local.FatigueEventEntity(
-                            tripId = activeTripId!!,
+                            tripId = currentTripId,
                             timestamp = System.currentTimeMillis().toString(),
                             fatigueLevel = newState.name,
                             primarySignal = "VISION",
@@ -265,65 +310,90 @@ fun CameraPreviewScreen(driverId: String) {
 
     if (hasPermissions) {
         Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    val previewView = PreviewView(ctx).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                    cameraProviderFuture.addListener({
-                        val cameraProvider = cameraProviderFuture.get()
-
-                        val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
+            if (activeTripId != null) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { ctx ->
+                        val previewView = PreviewView(ctx).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            scaleType = PreviewView.ScaleType.FILL_CENTER
                         }
 
-                        // Set up ImageAnalysis for ML Kit (Eye Tracking)
-                        val imageAnalysis = ImageAnalysis.Builder()
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                        
-                        imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                            // --- Connect ImageProxy to ML Kit InputImage ---
-                            @OptIn(ExperimentalGetImage::class)
-                            val mediaImage = imageProxy.image
-                            if (mediaImage != null) {
-                                val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-                                eyeStateTracker.processFrame(image) { isMicrosleep, isWarning ->
-                                    fatigueStateMachine.reportVisionEvent(isMicrosleep, isWarning)
-                                    // Important: Must close the proxy after ML Kit finishes processing
+                        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                        cameraProviderFuture.addListener({
+                            val cameraProvider = cameraProviderFuture.get()
+
+                            val preview = Preview.Builder().build().also {
+                                it.setSurfaceProvider(previewView.surfaceProvider)
+                            }
+
+                            // Set up ImageAnalysis for ML Kit (Eye Tracking)
+                            val imageAnalysis = ImageAnalysis.Builder()
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build()
+                            
+                            imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+                                if (activeTripIdState.value == null) {
+                                    imageProxy.close()
+                                    return@setAnalyzer
+                                }
+                                
+                                // --- Connect ImageProxy to ML Kit InputImage ---
+                                @OptIn(ExperimentalGetImage::class)
+                                val mediaImage = imageProxy.image
+                                if (mediaImage != null) {
+                                    val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                                    eyeStateTracker.processFrame(image) { result ->
+                                        latestEyeState = result
+                                        fatigueStateMachine.reportVisionEvent(result.isMicrosleep, result.isWarning)
+                                        
+                                        // Auto-dismiss critical overlay if eyes are opened
+                                        if (!result.isEyesClosed && showCriticalOverlay) {
+                                            fatigueStateMachine.reset()
+                                            showCriticalOverlay = false
+                                            mediaPlayer?.stop()
+                                            mediaPlayer?.release()
+                                            mediaPlayer = null
+                                        }
+                                        
+                                        // Important: Must close the proxy after ML Kit finishes processing
+                                        imageProxy.close()
+                                    }
+                                } else {
                                     imageProxy.close()
                                 }
-                            } else {
-                                imageProxy.close()
                             }
-                        }
 
-                        // We use the front camera for driver monitoring
-                        val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                            // We use the front camera for driver monitoring
+                            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
-                        try {
-                            cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview,
-                                imageAnalysis
-                            )
-                        } catch (e: Exception) {
-                            Log.e("CameraPreview", "Use case binding failed", e)
-                        }
-                    }, ContextCompat.getMainExecutor(ctx))
+                            try {
+                                cameraProvider.unbindAll()
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    cameraSelector,
+                                    preview,
+                                    imageAnalysis
+                                )
+                            } catch (e: Exception) {
+                                Log.e("CameraPreview", "Use case binding failed", e)
+                            }
+                        }, ContextCompat.getMainExecutor(ctx))
 
-                    previewView
+                        previewView
+                    }
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Camera paused.\nTap 'Start Driving' to begin monitoring.", color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
-            )
+            }
             
             // Overlay UI - Update based on fatigue state
             Column(
@@ -332,23 +402,86 @@ fun CameraPreviewScreen(driverId: String) {
                     .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val statusText = when (currentFatigueState) {
-                    FatigueLevel.NORMAL -> "Driver Monitoring Active"
-                    FatigueLevel.WARNING -> "WARNING: Drowsiness Detected"
-                    FatigueLevel.CRITICAL -> "WAKE UP!"
-                }
-                val textColor = when (currentFatigueState) {
-                    FatigueLevel.NORMAL -> Color.Green
-                    FatigueLevel.WARNING -> Color.Yellow
-                    FatigueLevel.CRITICAL -> Color.Red
+                val state = latestEyeState
+                if (state != null && activeTripId != null) {
+                    if (state.isWarning || state.isMicrosleep || state.isEyesClosed) {
+                        Text(
+                            text = if (state.isMicrosleep) "Micro-sleep Warning!" else "Eye-closure detected",
+                            color = if (state.isMicrosleep) Color.Red else Color(0xFFFFA500), // Orange
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                 }
 
-                Text(
-                    text = statusText,
-                    color = textColor,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                if (activeTripId != null) {
+                    val statusText = when (currentFatigueState) {
+                        FatigueLevel.NORMAL -> "Driver Monitoring Active"
+                        FatigueLevel.WARNING -> "WARNING: Drowsiness Detected"
+                        FatigueLevel.CRITICAL -> "WAKE UP!"
+                    }
+                    val textColor = when (currentFatigueState) {
+                        FatigueLevel.NORMAL -> Color.Green
+                        FatigueLevel.WARNING -> Color.Yellow
+                        FatigueLevel.CRITICAL -> Color.Red
+                    }
+    
+                    Text(
+                        text = statusText,
+                        color = textColor,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    Button(onClick = { stopTrip() }, enabled = !isStoppingTrip, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                        if (isStoppingTrip) {
+                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                        } else {
+                            Text("Stop Driving", color = Color.White)
+                        }
+                    }
+                } else {
+                    Button(onClick = { startTrip() }, enabled = !isStartingTrip) {
+                        if (isStartingTrip) {
+                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                        } else {
+                            Text("Start Driving")
+                        }
+                    }
+                }
+            }
+            
+            // Critical Red Banner Overlay
+            if (showCriticalOverlay) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Red.copy(alpha = 0.85f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "WAKE UP!\nDROWSINESS DETECTED!",
+                            color = Color.White,
+                            style = MaterialTheme.typography.displayMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { 
+                                fatigueStateMachine.reset()
+                                showCriticalOverlay = false
+                                mediaPlayer?.stop()
+                                mediaPlayer?.release()
+                                mediaPlayer = null
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.Black)
+                        ) {
+                            Text("DISMISS", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                }
             }
         }
 

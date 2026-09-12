@@ -27,7 +27,6 @@ export default function DriversList() {
       try {
         await deleteOldData();
         alert("Old data deleted successfully.");
-        // Refresh the list if needed
         fetchDrivers();
       } catch (e) {
         console.error(e);

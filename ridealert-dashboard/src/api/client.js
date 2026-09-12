@@ -54,4 +54,9 @@ export const deleteDriver = async (driverId) => {
   return response.data;
 };
 
+export const addDriver = async (driverData) => {
+  const response = await client.post('/drivers', driverData);
+  return response.data;
+};
+
 export default client;

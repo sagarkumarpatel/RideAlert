@@ -108,4 +108,7 @@ dependencies {
 
   // WorkManager
   implementation(libs.androidx.work.runtime.ktx)
+
+  // Security Crypto (EncryptedSharedPreferences)
+  implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
 }

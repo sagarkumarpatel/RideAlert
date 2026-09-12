@@ -33,8 +33,10 @@ model Driver {
   id                 String   @id @default(uuid())
   fleetId            String?
   name               String
-  phoneNumber        String?
-  licenseNumber      String?
+  address            String?
+  personalContact    String?
+  parentContact      String?
+  hasLicence         Boolean  @default(false)
   defaultVehicleType String   // TWO_WHEELER | TRUCK
   createdAt          DateTime @default(now())
 

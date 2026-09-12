@@ -5,16 +5,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.ridealert.data.ApiClient
+import com.example.ridealert.data.DriverLoginRequest
+import com.example.ridealert.data.local.SessionManager
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 @Composable
 fun LoginScreen(onLoginSuccess: (String) -> Unit) {
     var driverId by remember { mutableStateOf("") }
-    var pin by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -31,30 +36,49 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
 
         OutlinedTextField(
             value = driverId,
-            onValueChange = { driverId = it },
+            onValueChange = { 
+                driverId = it
+                errorMessage = null // Clear error on typing
+            },
             label = { Text("Driver ID") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            singleLine = true
+            singleLine = true,
+            isError = errorMessage != null
         )
 
-        OutlinedTextField(
-            value = pin,
-            onValueChange = { pin = it },
-            label = { Text("PIN Code") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            singleLine = true
-        )
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
 
         Button(
             onClick = {
                 if (driverId.isNotBlank()) {
                     isLoading = true
-                    // Simulate an API call delay for MVP
+                    errorMessage = null
+                    
                     coroutineScope.launch {
-                        kotlinx.coroutines.delay(1000)
-                        isLoading = false
-                        onLoginSuccess(driverId)
+                        try {
+                            val response = ApiClient.instance.loginDriver(DriverLoginRequest(driverId))
+                            // Save token
+                            val sessionManager = SessionManager(context)
+                            sessionManager.saveAuthToken(response.token)
+                            sessionManager.saveDriverId(response.driverId)
+                            
+                            isLoading = false
+                            onLoginSuccess(response.driverId)
+                        } catch (e: Exception) {
+                            isLoading = false
+                            if (e is HttpException && (e.code() == 401 || e.code() == 404)) {
+                                errorMessage = "No matching Driver ID found. Please contact your Fleet Manager."
+                            } else {
+                                errorMessage = "Login failed: ${e.message}"
+                            }
+                        }
                     }
                 }
             },
@@ -64,7 +88,7 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
             if (isLoading) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
             } else {
-                Text("Start Trip")
+                Text("Login")
             }
         }
     }

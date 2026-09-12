@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import DashboardOverview from './features/dashboard/DashboardOverview';
 import DriverOverview from './features/dashboard/DriverOverview';
 import DriversList from './features/dashboard/DriversList';
+import AddDriver from './features/dashboard/AddDriver';
 import EventsList from './features/dashboard/EventsList';
 import Login from './features/auth/Login';
 import './index.css';
@@ -11,6 +12,7 @@ import './index.css';
 const Icons = {
   Dashboard: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>,
   Drivers: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>,
+  AddDriver: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>,
   Activity: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
 };
 
@@ -39,6 +41,9 @@ function Layout({ children }) {
           </Link>
           <Link to="/drivers" className={`nav-link ${location.pathname === '/drivers' ? 'active' : ''}`}>
             <Icons.Drivers /> Manage Drivers
+          </Link>
+          <Link to="/add-driver" className={`nav-link ${location.pathname === '/add-driver' ? 'active' : ''}`}>
+            <Icons.AddDriver /> Add Driver
           </Link>
           <Link to="/events" className={`nav-link ${location.pathname === '/events' ? 'active' : ''}`}>
             <Icons.Activity /> Fatigue Events
@@ -104,6 +109,11 @@ function App() {
         <Route path="/events" element={
           <ProtectedRoute>
             <EventsList />
+          </ProtectedRoute>
+        } />
+        <Route path="/add-driver" element={
+          <ProtectedRoute>
+            <AddDriver />
           </ProtectedRoute>
         } />
       </Routes>

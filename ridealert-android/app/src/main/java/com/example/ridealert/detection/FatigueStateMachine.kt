@@ -66,4 +66,11 @@ class FatigueStateMachine {
             }
         }
     }
+
+    fun reset() {
+        if (currentState != FatigueLevel.NORMAL) {
+            transitionTo(FatigueLevel.NORMAL)
+        }
+        consecutiveWarnings = 0
+    }
 }

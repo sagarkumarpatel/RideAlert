@@ -5,6 +5,14 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 
+data class EyeStateResult(
+    val isEyesClosed: Boolean,
+    val isMicrosleep: Boolean,
+    val isWarning: Boolean,
+    val leftEyeOpen: Float,
+    val rightEyeOpen: Float
+)
+
 class EyeStateTracker {
     private val options = FaceDetectorOptions.Builder()
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
@@ -22,14 +30,14 @@ class EyeStateTracker {
 
     /**
      * Process an image frame for eye closure.
-     * Returns true if a microsleep event is detected (eyes closed > 2s)
+     * Returns EyeStateResult containing current eye probabilities and event flags.
      */
-    fun processFrame(image: InputImage, onResult: (isMicrosleep: Boolean, isWarning: Boolean) -> Unit) {
+    fun processFrame(image: InputImage, onResult: (result: EyeStateResult) -> Unit) {
         detector.process(image)
             .addOnSuccessListener { faces ->
                 if (faces.isEmpty()) {
                     // No face detected, might be looking away or camera covered
-                    onResult(false, false)
+                    onResult(EyeStateResult(false, false, false, 1.0f, 1.0f))
                     return@addOnSuccessListener
                 }
 
@@ -44,20 +52,20 @@ class EyeStateTracker {
                         // Just closed
                         isCurrentlyClosed = true
                         closedEyeStartTime = System.currentTimeMillis()
-                        onResult(false, false)
+                        onResult(EyeStateResult(true, false, false, leftEyeOpen, rightEyeOpen))
                     } else {
                         // Still closed, check duration
                         val duration = System.currentTimeMillis() - closedEyeStartTime
                         if (duration >= microsleepThresholdMs) {
                             Log.w("EyeStateTracker", "CRITICAL: Microsleep detected! Duration: $duration ms")
-                            onResult(true, false) // Critical event
+                            onResult(EyeStateResult(true, true, false, leftEyeOpen, rightEyeOpen)) // Critical event
                             // Reset to prevent spamming
                             closedEyeStartTime = System.currentTimeMillis()
                         } else if (duration >= 1000L) {
                             // Warning: Eyes closed for > 1 second
-                            onResult(false, true)
+                            onResult(EyeStateResult(true, false, true, leftEyeOpen, rightEyeOpen))
                         } else {
-                           onResult(false, false)
+                           onResult(EyeStateResult(true, false, false, leftEyeOpen, rightEyeOpen))
                         }
                     }
                 } else {
@@ -65,12 +73,12 @@ class EyeStateTracker {
                         isCurrentlyClosed = false
                         closedEyeStartTime = 0
                     }
-                    onResult(false, false)
+                    onResult(EyeStateResult(false, false, false, leftEyeOpen, rightEyeOpen))
                 }
             }
             .addOnFailureListener { e ->
                 Log.e("EyeStateTracker", "Face detection failed", e)
-                onResult(false, false)
+                onResult(EyeStateResult(false, false, false, 1.0f, 1.0f))
             }
     }
 }

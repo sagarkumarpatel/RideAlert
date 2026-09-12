@@ -22,6 +22,14 @@ class FatigueSyncWorker(
             return Result.success()
         }
 
+        val sessionManager = com.example.ridealert.data.local.SessionManager(applicationContext)
+        val token = sessionManager.getAuthToken()
+        if (token.isNullOrEmpty()) {
+            Log.e("FatigueSyncWorker", "No auth token available, delaying sync")
+            return Result.retry()
+        }
+        val bearerToken = "Bearer $token"
+
         return try {
             val successfulIds = mutableListOf<Int>()
             for (event in unsyncedEvents) {
@@ -35,7 +43,7 @@ class FatigueSyncWorker(
                 )
                 
                 try {
-                    ApiClient.instance.reportFatigueEvent(event.tripId, request)
+                    ApiClient.instance.reportFatigueEvent(event.tripId, bearerToken, request)
                     successfulIds.add(event.id)
                 } catch (e: Exception) {
                     Log.e("FatigueSyncWorker", "Failed to sync event ${event.id}", e)

@@ -14,6 +14,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
+import androidx.activity.result.IntentSenderRequest
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,6 +64,39 @@ fun CameraPreviewScreen(driverId: String) {
     val driftDetector = remember { com.example.ridealert.detection.DriftPatternDetector(context) }
     val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
     var currentLocation by remember { mutableStateOf<android.location.Location?>(null) }
+    
+    val settingResultRequest = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        if (activityResult.resultCode == android.app.Activity.RESULT_OK) {
+            Log.d("CameraPreview", "User enabled location settings")
+        } else {
+            Log.e("CameraPreview", "User denied location settings")
+        }
+    }
+
+    LaunchedEffect(hasPermissions) {
+        if (hasPermissions) {
+            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+            ).setMinUpdateIntervalMillis(2000).build()
+            
+            val builder = com.google.android.gms.location.LocationSettingsRequest.Builder()
+                .addLocationRequest(locationRequest)
+            
+            val client = com.google.android.gms.location.LocationServices.getSettingsClient(context)
+            client.checkLocationSettings(builder.build()).addOnFailureListener { exception ->
+                if (exception is com.google.android.gms.common.api.ResolvableApiException) {
+                    try {
+                        val intentSenderRequest = IntentSenderRequest.Builder(exception.resolution).build()
+                        settingResultRequest.launch(intentSenderRequest)
+                    } catch (sendEx: Exception) {
+                        Log.e("CameraPreview", "Failed to launch resolution", sendEx)
+                    }
+                }
+            }
+        }
+    }
     
     // Actively update location
     DisposableEffect(hasPermissions) {

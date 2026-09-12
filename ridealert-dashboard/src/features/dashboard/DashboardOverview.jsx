@@ -20,19 +20,23 @@ export default function DashboardOverview() {
 
   const [recentEvents, setRecentEvents] = useState([]);
   
+  const [fetchError, setFetchError] = useState(null);
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setFetchError(null);
         const sumData = await getFleetSummary(selectedDate);
+        console.log('[Dashboard] Fleet summary:', sumData);
         setSummary(sumData);
         
         try {
-          const [incidentsRes] = await Promise.all([
-            getMapIncidents(selectedDate).catch(() => [])
-          ]);
+          const incidentsRes = await getMapIncidents(selectedDate).catch((err) => {
+            console.warn('[Dashboard] Failed to fetch incidents:', err.message);
+            return [];
+          });
           
           let trendRes = { events: [] };
-          // If we have incidents, grab the driverId of the most recent one to show their trend
           if (incidentsRes && incidentsRes.length > 0) {
             const dynamicDriverId = incidentsRes[0].trip?.driverId || DEMO_DRIVER_ID;
             trendRes = await getDriverFatigueTrend(dynamicDriverId, selectedDate).catch(() => ({ events: [] }));
@@ -51,11 +55,13 @@ export default function DashboardOverview() {
             setTrendData(getMockTrendData());
           }
         } catch (e) {
+          console.warn('[Dashboard] Inner fetch error:', e.message);
           setTrendData(getMockTrendData());
           setRecentEvents([]);
         }
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        console.error("[Dashboard] Failed to fetch dashboard data:", error);
+        setFetchError(error.message || 'Failed to fetch data');
       } finally {
         setLoading(false);
       }
@@ -63,7 +69,7 @@ export default function DashboardOverview() {
 
     setLoading(true);
     fetchData();
-    const intervalId = setInterval(fetchData, 3000); // Auto-refresh every 3 seconds
+    const intervalId = setInterval(fetchData, 3000);
     return () => clearInterval(intervalId);
   }, [selectedDate]);
 
@@ -105,6 +111,28 @@ export default function DashboardOverview() {
           />
         </div>
       </div>
+
+      {fetchError && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.15)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          color: '#ef4444',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>⚠️ Failed to load dashboard data: {fetchError}. Please check if the backend server is running.</span>
+          <button 
+            onClick={() => { localStorage.removeItem('adminToken'); window.location.href = '/login'; }}
+            style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer' }}
+          >
+            Re-Login
+          </button>
+        </div>
+      )}
 
       <div className="summary-grid">
         <div className="glass-panel stat-card">

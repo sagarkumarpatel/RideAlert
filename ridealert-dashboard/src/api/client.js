@@ -15,6 +15,19 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// Auto-logout on expired/invalid token
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      console.warn('Auth token expired or invalid. Redirecting to login.');
+      localStorage.removeItem('adminToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const getFleetSummary = async (date) => {
   const url = date ? `/fleet/summary?date=${date}` : '/fleet/summary';
   const response = await client.get(url);

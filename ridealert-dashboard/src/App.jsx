@@ -16,7 +16,7 @@ const Icons = {
   Activity: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
 };
 
-function Layout({ children }) {
+function Layout({ children, onLogout }) {
   const location = useLocation();
   
   return (
@@ -49,6 +49,36 @@ function Layout({ children }) {
             <Icons.Activity /> Fatigue Events
           </Link>
         </div>
+
+        <button 
+          onClick={onLogout}
+          className="nav-link"
+          style={{
+            marginTop: 'auto',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            width: '100%',
+            color: '#ef4444',
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          Logout
+        </button>
       </nav>
       
       <div className="main-content-wrapper" style={{ flex: 1, overflow: 'auto' }}>
@@ -72,6 +102,18 @@ const Placeholder = ({ title }) => (
 
 function App() {
   const [authToken, setAuthToken] = React.useState(localStorage.getItem('adminToken'));
+
+  // Keep authToken in sync when interceptor clears it
+  React.useEffect(() => {
+    const onStorage = () => {
+      const token = localStorage.getItem('adminToken');
+      if (!token && authToken) {
+        setAuthToken(null);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [authToken]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');

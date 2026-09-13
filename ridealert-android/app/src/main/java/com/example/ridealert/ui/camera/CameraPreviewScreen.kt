@@ -28,12 +28,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.draw.scale
 import com.example.ridealert.detection.EyeStateTracker
 import com.example.ridealert.detection.FatigueStateMachine
 import com.example.ridealert.detection.FatigueLevel
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
+import androidx.compose.animation.core.animateFloat
 
 @Composable
 fun CameraPreviewScreen(driverId: String) {
@@ -523,7 +525,7 @@ fun CameraPreviewScreen(driverId: String) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp)
-                            .androidx.compose.ui.draw.scale(scale),
+                            .scale(scale),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {

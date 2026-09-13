@@ -345,12 +345,31 @@ fun CameraPreviewScreen(driverId: String) {
             if ((newState == FatigueLevel.WARNING || newState == FatigueLevel.CRITICAL) && currentTripId != null) {
                 coroutineScope.launch {
                     try {
+                        val token = sessionManager.getAuthToken() ?: ""
+                        com.example.ridealert.data.ApiClient.instance.reportFatigueEvent(
+                            tripId = currentTripId,
+                            token = "Bearer $token",
+                            request = com.example.ridealert.data.FatigueEventRequest(
+                                timestamp = System.currentTimeMillis().toString(),
+                                fatigueLevel = newState.name,
+                                primarySignal = "FACIAL",
+                                eyeClosureScore = 1.0,
+                                latitude = currentLocation?.latitude,
+                                longitude = currentLocation?.longitude
+                            )
+                        )
+                        Log.d("CameraPreview", "Facial event synced immediately via Retrofit")
+                    } catch (e: Exception) {
+                        Log.e("CameraPreview", "Failed immediate sync for facial event", e)
+                    }
+
+                    try {
                         val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
                         val entity = com.example.ridealert.data.local.FatigueEventEntity(
                             tripId = currentTripId,
                             timestamp = System.currentTimeMillis().toString(),
                             fatigueLevel = newState.name,
-                            primarySignal = "VISION",
+                            primarySignal = "FACIAL",
                             eyeClosureScore = 1.0,
                             latitude = currentLocation?.latitude,
                             longitude = currentLocation?.longitude

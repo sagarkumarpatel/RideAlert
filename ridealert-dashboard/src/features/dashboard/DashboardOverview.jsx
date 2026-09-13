@@ -35,15 +35,30 @@ export default function DashboardOverview() {
             return [];
           });
 
-          setMapIncidents(allEvents || []);
+          // Provide fallback coordinates for events missing them (e.g. Android Emulator without GPS)
+          const processedEvents = (allEvents || []).map((e) => {
+            if (!e.latitude || !e.longitude) {
+              const seed = e.id ? e.id.charCodeAt(0) + e.id.charCodeAt(e.id.length - 1) : 0;
+              const offsetLat = (seed % 10 - 5) * 0.01;
+              const offsetLng = ((seed * 3) % 10 - 5) * 0.01;
+              return {
+                ...e,
+                latitude: 39.8283 + offsetLat, // US Center fallback
+                longitude: -98.5795 + offsetLng
+              };
+            }
+            return e;
+          });
+
+          setMapIncidents(processedEvents);
 
           // Recent Alerts: newest first
-          const sortedDesc = [...(allEvents || [])].sort((a, b) => new Date(b.eventTimestamp) - new Date(a.eventTimestamp));
+          const sortedDesc = [...processedEvents].sort((a, b) => new Date(b.eventTimestamp) - new Date(a.eventTimestamp));
           setRecentEvents(sortedDesc);
 
           // Trend chart: oldest first (left → right timeline)
-          if (allEvents && allEvents.length > 0) {
-            const sortedAsc = [...allEvents].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
+          if (processedEvents && processedEvents.length > 0) {
+            const sortedAsc = [...processedEvents].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
             const mappedTrend = sortedAsc.map(e => ({
               time: new Date(e.eventTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
               level: e.fatigueLevel === 'CRITICAL' ? 3 : e.fatigueLevel === 'WARNING' ? 2 : 1

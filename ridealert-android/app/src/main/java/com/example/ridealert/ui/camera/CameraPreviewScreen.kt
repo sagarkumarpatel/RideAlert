@@ -86,6 +86,17 @@ fun CameraPreviewScreen(driverId: String) {
 
     LaunchedEffect(hasPermissions) {
         if (hasPermissions) {
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                    if (loc != null && currentLocation == null) {
+                        currentLocation = loc
+                        Log.d("CameraPreview", "Got last known location immediately")
+                    }
+                }
+            } catch (e: SecurityException) {
+                Log.e("CameraPreview", "Missing permission for lastLocation", e)
+            }
+
             val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
                 com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
             ).setMinUpdateIntervalMillis(2000).build()

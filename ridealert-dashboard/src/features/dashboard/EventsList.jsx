@@ -15,7 +15,8 @@ export default function EventsList() {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const data = await getMapIncidents(selectedDate);
+        const dateParam = selectedDate === getTodayString() ? undefined : selectedDate;
+        const data = await getMapIncidents(dateParam);
         setEvents(data);
       } catch (error) {
         console.error('Failed to fetch events', error);

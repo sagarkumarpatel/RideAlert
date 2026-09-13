@@ -24,7 +24,8 @@ export default function DriverOverview() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await getDriverOverview(driverId, selectedDate);
+        const dateParam = selectedDate === getTodayString() ? undefined : selectedDate;
+        const data = await getDriverOverview(driverId, dateParam);
         setDriverInfo(data.driver);
         setSummary(data.summary);
         

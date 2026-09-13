@@ -24,12 +24,13 @@ export default function DashboardOverview() {
     const fetchData = async () => {
       try {
         setFetchError(null);
-        const sumData = await getFleetSummary(selectedDate);
+        const dateParam = selectedDate === getTodayString() ? undefined : selectedDate;
+        const sumData = await getFleetSummary(dateParam);
         setSummary(sumData);
         
         try {
           // Fleet incidents is the single source of truth — covers all real drivers' WARNING/CRITICAL events.
-          const allEvents = await getMapIncidents(selectedDate).catch((err) => {
+          const allEvents = await getMapIncidents(dateParam).catch((err) => {
             console.warn('[Dashboard] Failed to fetch incidents:', err.message);
             return [];
           });

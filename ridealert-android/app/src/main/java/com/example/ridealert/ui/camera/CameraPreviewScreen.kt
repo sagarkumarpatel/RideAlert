@@ -72,7 +72,7 @@ fun CameraPreviewScreen(driverId: String) {
     var mediaPlayer: android.media.MediaPlayer? by remember { mutableStateOf(null) }
     val driftDetector = remember { com.example.ridealert.detection.DriftPatternDetector(context) }
     val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
-    var currentLocation by remember { mutableStateOf<android.location.Location?>(null) }
+    val currentLocationState = remember { mutableStateOf<android.location.Location?>(null) }
     
     val settingResultRequest = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
@@ -88,8 +88,8 @@ fun CameraPreviewScreen(driverId: String) {
         if (hasPermissions) {
             try {
                 fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                    if (loc != null && currentLocation == null) {
-                        currentLocation = loc
+                    if (loc != null && currentLocationState.value == null) {
+                        currentLocationState.value = loc
                         Log.d("CameraPreview", "Got last known location immediately")
                     }
                 }
@@ -129,8 +129,8 @@ fun CameraPreviewScreen(driverId: String) {
                 
                 locationCallback = object : com.google.android.gms.location.LocationCallback() {
                     override fun onLocationResult(locationResult: com.google.android.gms.location.LocationResult) {
-                        currentLocation = locationResult.lastLocation
-                        Log.d("CameraPreview", "Updated Location: ${currentLocation?.latitude}, ${currentLocation?.longitude}")
+                        currentLocationState.value = locationResult.lastLocation
+                        Log.d("CameraPreview", "Updated Location: ${currentLocationState.value?.latitude}, ${currentLocationState.value?.longitude}")
                     }
                 }
                 
@@ -194,8 +194,8 @@ fun CameraPreviewScreen(driverId: String) {
                                 timestamp = System.currentTimeMillis().toString(),
                                 fatigueLevel = FatigueLevel.CRITICAL.name,
                                 primarySignal = "MOTION",
-                                latitude = currentLocation?.latitude,
-                                longitude = currentLocation?.longitude
+                                latitude = currentLocationState.value?.latitude,
+                                longitude = currentLocationState.value?.longitude
                             )
                         )
                         Log.d("CameraPreview", "Emergency event synced immediately via Retrofit")
@@ -212,8 +212,8 @@ fun CameraPreviewScreen(driverId: String) {
                                 fatigueLevel = FatigueLevel.CRITICAL.name,
                                 primarySignal = "MOTION",
                                 eyeClosureScore = 0.0,
-                                latitude = currentLocation?.latitude,
-                                longitude = currentLocation?.longitude
+                                latitude = currentLocationState.value?.latitude,
+                                longitude = currentLocationState.value?.longitude
                             )
                         )
                         val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
@@ -365,8 +365,8 @@ fun CameraPreviewScreen(driverId: String) {
                                 fatigueLevel = newState.name,
                                 primarySignal = "FACIAL",
                                 eyeClosureScore = 1.0,
-                                latitude = currentLocation?.latitude,
-                                longitude = currentLocation?.longitude
+                                latitude = currentLocationState.value?.latitude,
+                                longitude = currentLocationState.value?.longitude
                             )
                         )
                         Log.d("CameraPreview", "Facial event synced immediately via Retrofit")
@@ -382,8 +382,8 @@ fun CameraPreviewScreen(driverId: String) {
                             fatigueLevel = newState.name,
                             primarySignal = "FACIAL",
                             eyeClosureScore = 1.0,
-                            latitude = currentLocation?.latitude,
-                            longitude = currentLocation?.longitude
+                            latitude = currentLocationState.value?.latitude,
+                            longitude = currentLocationState.value?.longitude
                         )
                         db.fatigueEventDao().insertEvent(entity)
                         

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getFleetSummary, getDriverFatigueTrend, getMapIncidents } from '../../api/client';
+import { getFleetSummary, getMapIncidents } from '../../api/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import IncidentMap from './IncidentMap';
 
@@ -15,10 +15,8 @@ export default function DashboardOverview() {
   const [trendData, setTrendData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // For MVP demo, hardcode a mock driverId or fetch the first driver if no data
-  const DEMO_DRIVER_ID = "mock-driver-123";
-
   const [recentEvents, setRecentEvents] = useState([]);
+  const [mapIncidents, setMapIncidents] = useState([]);
   
   const [fetchError, setFetchError] = useState(null);
   
@@ -27,26 +25,25 @@ export default function DashboardOverview() {
       try {
         setFetchError(null);
         const sumData = await getFleetSummary(selectedDate);
-        console.log('[Dashboard] Fleet summary:', sumData);
         setSummary(sumData);
         
         try {
-          const incidentsRes = await getMapIncidents(selectedDate).catch((err) => {
+          // Fleet incidents is the single source of truth — covers all real drivers' WARNING/CRITICAL events.
+          const allEvents = await getMapIncidents(selectedDate).catch((err) => {
             console.warn('[Dashboard] Failed to fetch incidents:', err.message);
             return [];
           });
-          
-          let trendRes = { events: [] };
-          if (incidentsRes && incidentsRes.length > 0) {
-            const dynamicDriverId = incidentsRes[0].trip?.driverId || DEMO_DRIVER_ID;
-            trendRes = await getDriverFatigueTrend(dynamicDriverId, selectedDate).catch(() => ({ events: [] }));
-            setRecentEvents(incidentsRes);
-          } else {
-            setRecentEvents([]);
-          }
-          
-          if (trendRes.events && trendRes.events.length > 0) {
-            const mappedTrend = trendRes.events.map(e => ({
+
+          setMapIncidents(allEvents || []);
+
+          // Recent Alerts: newest first
+          const sortedDesc = [...(allEvents || [])].sort((a, b) => new Date(b.eventTimestamp) - new Date(a.eventTimestamp));
+          setRecentEvents(sortedDesc);
+
+          // Trend chart: oldest first (left → right timeline)
+          if (allEvents && allEvents.length > 0) {
+            const sortedAsc = [...allEvents].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
+            const mappedTrend = sortedAsc.map(e => ({
               time: new Date(e.eventTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
               level: e.fatigueLevel === 'CRITICAL' ? 3 : e.fatigueLevel === 'WARNING' ? 2 : 1
             }));
@@ -58,6 +55,7 @@ export default function DashboardOverview() {
           console.warn('[Dashboard] Inner fetch error:', e.message);
           setTrendData(getMockTrendData());
           setRecentEvents([]);
+          setMapIncidents([]);
         }
       } catch (error) {
         console.error("[Dashboard] Failed to fetch dashboard data:", error);
@@ -217,7 +215,7 @@ export default function DashboardOverview() {
 
       <div className="glass-panel" style={{ marginTop: '24px', height: '400px' }}>
         <h2 style={{marginTop: 0, marginBottom: '24px', fontSize: '1.2rem'}}>Live Incident Map</h2>
-        <IncidentMap events={recentEvents} />
+        <IncidentMap events={mapIncidents} />
       </div>
     </div>
   );

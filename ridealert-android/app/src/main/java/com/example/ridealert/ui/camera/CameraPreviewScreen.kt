@@ -127,6 +127,35 @@ fun CameraPreviewScreen(driverId: String) {
                     com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
                 ).setMinUpdateIntervalMillis(2000).build()
                 
+                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                    if (loc != null) {
+                        currentLocationState.value = loc
+                        Log.d("CameraPreview", "Got last known location immediately")
+                    } else {
+                        // Fallback to LocationManager if FusedLocation returns null
+                        try {
+                            val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                            val gpsLoc = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                            val netLoc = locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+                            val fallback = gpsLoc ?: netLoc
+                            if (fallback != null) {
+                                currentLocationState.value = fallback
+                                Log.d("CameraPreview", "Used LocationManager fallback: ${fallback.latitude}, ${fallback.longitude}")
+                            }
+                        } catch (ex: Exception) {
+                            Log.e("CameraPreview", "LocationManager fallback failed", ex)
+                        }
+                    }
+                }
+            } catch (e: SecurityException) {
+                Log.e("CameraPreview", "Missing permission for lastLocation", e)
+            }
+
+            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+            ).setMinUpdateIntervalMillis(2000).build()
+            
+            if (locationCallback == null) {
                 locationCallback = object : com.google.android.gms.location.LocationCallback() {
                     override fun onLocationResult(locationResult: com.google.android.gms.location.LocationResult) {
                         currentLocationState.value = locationResult.lastLocation
@@ -134,13 +163,15 @@ fun CameraPreviewScreen(driverId: String) {
                     }
                 }
                 
-                fusedLocationClient.requestLocationUpdates(
-                    locationRequest,
-                    locationCallback,
-                    android.os.Looper.getMainLooper()
-                )
-            } catch (e: SecurityException) {
-                Log.e("CameraPreview", "Location permission missing", e)
+                try {
+                    fusedLocationClient.requestLocationUpdates(
+                        locationRequest,
+                        locationCallback!!,
+                        android.os.Looper.getMainLooper()
+                    )
+                } catch (e: SecurityException) {
+                    Log.e("CameraPreview", "Missing location permission", e)
+                }
             }
         }
         

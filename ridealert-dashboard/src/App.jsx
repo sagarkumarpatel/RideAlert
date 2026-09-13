@@ -16,7 +16,7 @@ const Icons = {
   Activity: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
 };
 
-function Layout({ children, onLogout }) {
+function Layout({ children, onLogout, theme, toggleTheme }) {
   const location = useLocation();
   
   return (
@@ -26,8 +26,8 @@ function Layout({ children, onLogout }) {
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#logoGradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <defs>
               <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#06b6d4" />
+                <stop offset="0%" stopColor="#FF5238" />
+                <stop offset="100%" stopColor="#FF8A65" />
               </linearGradient>
             </defs>
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -59,17 +59,17 @@ function Layout({ children, onLogout }) {
             background: 'transparent',
             cursor: 'pointer',
             width: '100%',
-            color: '#ef4444',
+            color: 'var(--accent-coral)',
             fontFamily: 'inherit',
             fontSize: 'inherit',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             padding: '12px 20px',
-            borderRadius: '8px',
+            borderRadius: '12px',
             transition: 'background 0.2s'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 82, 56, 0.1)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -81,8 +81,34 @@ function Layout({ children, onLogout }) {
         </button>
       </nav>
       
-      <div className="main-content-wrapper" style={{ flex: 1, overflow: 'auto' }}>
-        {children}
+      <div className="main-content-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '24px 40px 0', flexShrink: 0 }}>
+          <button
+            onClick={toggleTheme}
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--accent-coral)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontWeight: 600,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+            }}
+          >
+            {theme === 'light' ? (
+              <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> Dark Mode</>
+            ) : (
+              <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> Light Mode</>
+            )}
+          </button>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -102,6 +128,16 @@ const Placeholder = ({ title }) => (
 
 function App() {
   const [authToken, setAuthToken] = React.useState(localStorage.getItem('adminToken'));
+  const [theme, setTheme] = React.useState(localStorage.getItem('dashboardTheme') || 'dark');
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('dashboardTheme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   // Keep authToken in sync when interceptor clears it
   React.useEffect(() => {
@@ -124,7 +160,7 @@ function App() {
     if (!authToken) {
       return <Navigate to="/login" replace />;
     }
-    return <Layout onLogout={handleLogout}>{children}</Layout>;
+    return <Layout onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>{children}</Layout>;
   };
 
   return (

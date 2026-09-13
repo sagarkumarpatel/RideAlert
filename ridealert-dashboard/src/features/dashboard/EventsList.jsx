@@ -84,7 +84,7 @@ export default function EventsList() {
                         borderRadius: '4px', 
                         fontSize: '0.85rem',
                         backgroundColor: event.fatigueLevel === 'CRITICAL' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(234, 179, 8, 0.2)',
-                        color: event.fatigueLevel === 'CRITICAL' ? '#ef4444' : '#eab308'
+                        color: event.fatigueLevel === 'CRITICAL' ? 'var(--accent-coral)' : 'var(--warning-yellow)'
                       }}>
                         {event.fatigueLevel}
                       </span>

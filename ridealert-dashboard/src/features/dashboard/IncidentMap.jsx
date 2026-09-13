@@ -74,7 +74,7 @@ export default function IncidentMap({ events }) {
             >
               <Popup>
                 <div style={{ padding: '4px' }}>
-                  <h4 style={{ margin: '0 0 8px 0', color: isCritical ? '#ef4444' : (isWarning ? '#eab308' : '#3b82f6') }}>
+                  <h4 style={{ margin: '0 0 8px 0', color: isCritical ? 'var(--accent-coral)' : (isWarning ? 'var(--warning-yellow)' : 'var(--accent-cyan)') }}>
                     {event.fatigueLevel} ALERT
                   </h4>
                   <p style={{ margin: '4px 0' }}><strong>Driver ID:</strong> {event.trip?.driverId || 'Unknown'}</p>

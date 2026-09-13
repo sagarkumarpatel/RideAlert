@@ -56,8 +56,8 @@ export default function DriversList() {
           style={{
             padding: '8px 16px',
             background: 'rgba(239, 68, 68, 0.2)',
-            color: '#ef4444',
-            border: '1px solid #ef4444',
+            color: 'var(--accent-coral)',
+            border: '1px solid var(--accent-coral)',
             borderRadius: '6px',
             cursor: 'pointer',
             fontWeight: '600'
@@ -91,7 +91,7 @@ export default function DriversList() {
                 {drivers.map((driver) => (
                   <tr key={driver.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ padding: '16px', fontWeight: 500 }}>
-                      <Link to={`/drivers/${driver.id}`} style={{ color: '#3b82f6', textDecoration: 'none' }}>
+                      <Link to={`/drivers/${driver.id}`} style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>
                         {driver.id}
                       </Link>
                     </td>
@@ -106,7 +106,7 @@ export default function DriversList() {
                         onClick={() => handleDeleteDriver(driver.id)}
                         style={{
                           background: 'transparent',
-                          color: '#ef4444',
+                          color: 'var(--accent-coral)',
                           border: 'none',
                           cursor: 'pointer',
                           textDecoration: 'underline'

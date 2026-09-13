@@ -57,7 +57,7 @@ export default function DriverOverview() {
   return (
     <div className="main-content">
       <div style={{ marginBottom: '16px' }}>
-        <Link to="/drivers" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
+        <Link to="/drivers" style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: 500 }}>
           &larr; Back to Manage Drivers
         </Link>
       </div>
@@ -156,7 +156,7 @@ export default function DriverOverview() {
                   domain={[1, 3]}
                 />
                 <Tooltip 
-                  contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff'}}
+                  contentStyle={{backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)'}}
                 />
                 <Line 
                   type="stepAfter" 
@@ -168,9 +168,9 @@ export default function DriverOverview() {
                 />
                 <defs>
                   <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={1}/>
-                    <stop offset="50%" stopColor="#eab308" stopOpacity={1}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={1}/>
+                    <stop offset="5%" stopColor="#FF5238" stopOpacity={1}/>
+                    <stop offset="50%" stopColor="#F59E0B" stopOpacity={1}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={1}/>
                   </linearGradient>
                 </defs>
               </LineChart>

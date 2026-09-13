@@ -102,9 +102,9 @@ export default function DashboardOverview() {
             style={{
               padding: '8px 12px',
               borderRadius: '8px',
-              border: '1px solid var(--glass-border)',
-              background: 'var(--glass-bg)',
-              color: 'var(--text-color)',
+              border: '1px solid var(--border-color)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'var(--text-main)',
               outline: 'none',
               fontFamily: 'inherit'
             }}
@@ -114,12 +114,12 @@ export default function DashboardOverview() {
 
       {fetchError && (
         <div style={{
-          background: 'rgba(239, 68, 68, 0.15)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          borderRadius: '8px',
+          background: 'rgba(255, 82, 56, 0.15)',
+          border: '1px solid rgba(255, 82, 56, 0.3)',
+          borderRadius: '12px',
           padding: '12px 16px',
           marginBottom: '16px',
-          color: '#ef4444',
+          color: 'var(--text-main)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -127,7 +127,7 @@ export default function DashboardOverview() {
           <span>⚠️ Failed to load dashboard data: {fetchError}. Please check if the backend server is running.</span>
           <button 
             onClick={() => { localStorage.removeItem('adminToken'); window.location.href = '/login'; }}
-            style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer' }}
+            style={{ background: 'var(--accent-coral)', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
           >
             Re-Login
           </button>
@@ -169,7 +169,7 @@ export default function DashboardOverview() {
                   domain={[1, 3]}
                 />
                 <Tooltip 
-                  contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff'}}
+                  contentStyle={{backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)'}}
                 />
                 <Line 
                   type="monotone" 
@@ -181,9 +181,9 @@ export default function DashboardOverview() {
                 />
                 <defs>
                   <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={1}/>
-                    <stop offset="50%" stopColor="#eab308" stopOpacity={1}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={1}/>
+                    <stop offset="5%" stopColor="#FF5238" stopOpacity={1}/>
+                    <stop offset="50%" stopColor="#F59E0B" stopOpacity={1}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={1}/>
                   </linearGradient>
                 </defs>
               </LineChart>

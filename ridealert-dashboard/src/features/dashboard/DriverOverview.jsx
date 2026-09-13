@@ -41,20 +41,7 @@ export default function DriverOverview() {
         
         setRecentEvents(data.recentAlerts || []);
         
-        const processedIncidents = (data.incidents || []).map((e) => {
-          if (!e.latitude || !e.longitude) {
-            const seed = e.id ? e.id.charCodeAt(0) + e.id.charCodeAt(e.id.length - 1) : 0;
-            const offsetLat = (seed % 10 - 5) * 0.01;
-            const offsetLng = ((seed * 3) % 10 - 5) * 0.01;
-            return {
-              ...e,
-              latitude: 39.8283 + offsetLat, // US Center fallback
-              longitude: -98.5795 + offsetLng
-            };
-          }
-          return e;
-        });
-        
+        const processedIncidents = data.incidents || [];
         setIncidents(processedIncidents);
         
       } catch (error) {

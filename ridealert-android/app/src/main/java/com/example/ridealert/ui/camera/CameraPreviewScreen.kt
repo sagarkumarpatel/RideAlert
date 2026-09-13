@@ -232,6 +232,26 @@ fun CameraPreviewScreen(driverId: String) {
     var isStartingTrip by remember { mutableStateOf(false) }
     var isStoppingTrip by remember { mutableStateOf(false) }
     
+    // Auto-stop trip if navigating away while trip is active
+    DisposableEffect(Unit) {
+        onDispose {
+            val currentTripId = activeTripIdState.value
+            if (currentTripId != null && !isStoppingTrip) {
+                // Prevent multiple calls
+                activeTripIdState.value = null
+                kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val token = sessionManager.getAuthToken() ?: ""
+                        com.example.ridealert.data.ApiClient.instance.endTrip(currentTripId, "Bearer $token")
+                        Log.d("CameraPreview", "Auto-ended Trip on dispose: $currentTripId")
+                    } catch (e: Exception) {
+                        Log.e("CameraPreview", "Failed to auto-end trip on dispose", e)
+                    }
+                }
+            }
+        }
+    }
+    
     fun startTrip() {
         if (isStartingTrip) return
         isStartingTrip = true

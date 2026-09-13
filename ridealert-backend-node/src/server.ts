@@ -290,7 +290,7 @@ app.get('/api/fleet/summary', authenticateJWT, async (req, res) => {
           }
         } : {
           startTimestamp: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Exclude stale ghost trips
+            gte: new Date(Date.now() - 2 * 60 * 60 * 1000) // Exclude stale ghost trips
           }
         })
       },
@@ -419,7 +419,7 @@ app.get('/api/drivers/:driverId/overview', authenticateJWT, async (req: any, res
     // or if historical, if they had ANY trip that day.
     let status = 'INACTIVE';
     if (isToday) {
-      status = trips.some(t => t.status === 'ACTIVE' && t.startTimestamp.getTime() > Date.now() - 24 * 60 * 60 * 1000) ? 'ACTIVE' : 'INACTIVE';
+      status = trips.some(t => t.status === 'ACTIVE' && t.startTimestamp.getTime() > Date.now() - 2 * 60 * 60 * 1000) ? 'ACTIVE' : 'INACTIVE';
     } else {
       status = trips.length > 0 ? 'ACTIVE' : 'INACTIVE';
     }

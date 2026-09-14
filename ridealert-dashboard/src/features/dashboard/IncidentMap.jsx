@@ -78,7 +78,7 @@ export default function IncidentMap({ events }) {
                     {event.fatigueLevel} ALERT
                   </h4>
                   <p style={{ margin: '4px 0' }}><strong>Driver ID:</strong> {event.trip?.driverId || 'Unknown'}</p>
-                  <p style={{ margin: '4px 0' }}><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</p>
+                  <p style={{ margin: '4px 0' }}><strong>Time:</strong> {new Date(event.eventTimestamp || event.timestamp || new Date()).toLocaleTimeString()}</p>
                   <p style={{ margin: '4px 0' }}><strong>Signal:</strong> {event.primarySignal}</p>
                   
                   {event.latitude && event.longitude && (

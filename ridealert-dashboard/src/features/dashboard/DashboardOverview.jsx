@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getFleetSummary, getMapIncidents } from '../../api/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import IncidentMap from './IncidentMap';
+import io from 'socket.io-client';
 
-export default function DashboardOverview() {
+export default function DashboardOverview({ authToken }) {
   const getTodayString = () => {
     const d = new Date();
     const offset = d.getTimezoneOffset() * 60000;
@@ -20,58 +21,90 @@ export default function DashboardOverview() {
   
   const [fetchError, setFetchError] = useState(null);
   
-  useEffect(() => {
-    const fetchData = async () => {
+  const socketRef = useRef(null);
+
+  const fetchData = async () => {
+    try {
+      setFetchError(null);
+      const dateParam = selectedDate === getTodayString() ? undefined : selectedDate;
+      const sumData = await getFleetSummary(dateParam);
+      setSummary(sumData);
+      
       try {
-        setFetchError(null);
-        const dateParam = selectedDate === getTodayString() ? undefined : selectedDate;
-        const sumData = await getFleetSummary(dateParam);
-        setSummary(sumData);
-        
-        try {
-          // Fleet incidents is the single source of truth — covers all real drivers' WARNING/CRITICAL events.
-          const allEvents = await getMapIncidents(dateParam).catch((err) => {
-            console.warn('[Dashboard] Failed to fetch incidents:', err.message);
-            return [];
-          });
+        const allEvents = await getMapIncidents(dateParam).catch((err) => {
+          console.warn('[Dashboard] Failed to fetch incidents:', err.message);
+          return [];
+        });
 
-          const processedEvents = allEvents || [];
-          setMapIncidents(processedEvents);
+        const processedEvents = allEvents || [];
+        setMapIncidents(processedEvents);
 
-          // Recent Alerts: newest first
-          const sortedDesc = [...processedEvents].sort((a, b) => new Date(b.eventTimestamp) - new Date(a.eventTimestamp));
-          setRecentEvents(sortedDesc);
+        const sortedDesc = [...processedEvents].sort((a, b) => new Date(b.eventTimestamp) - new Date(a.eventTimestamp));
+        setRecentEvents(sortedDesc);
 
-          // Trend chart: oldest first (left → right timeline)
-          if (processedEvents && processedEvents.length > 0) {
-            const sortedAsc = [...processedEvents].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
-            const mappedTrend = sortedAsc.map(e => ({
-              time: new Date(e.eventTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-              level: e.fatigueLevel === 'CRITICAL' ? 3 : e.fatigueLevel === 'WARNING' ? 2 : 1
-            }));
-            setTrendData(mappedTrend);
-          } else {
-            setTrendData(getMockTrendData());
-          }
-        } catch (e) {
-          console.warn('[Dashboard] Inner fetch error:', e.message);
+        if (processedEvents && processedEvents.length > 0) {
+          const sortedAsc = [...processedEvents].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
+          const mappedTrend = sortedAsc.map(e => ({
+            time: new Date(e.eventTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            level: e.fatigueLevel === 'CRITICAL' ? 3 : e.fatigueLevel === 'WARNING' ? 2 : 1
+          }));
+          setTrendData(mappedTrend);
+        } else {
           setTrendData(getMockTrendData());
-          setRecentEvents([]);
-          setMapIncidents([]);
         }
-      } catch (error) {
-        console.error("[Dashboard] Failed to fetch dashboard data:", error);
-        setFetchError(error.message || 'Failed to fetch data');
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.warn('[Dashboard] Inner fetch error:', e.message);
+        setTrendData(getMockTrendData());
+        setRecentEvents([]);
+        setMapIncidents([]);
       }
-    };
+    } catch (error) {
+      console.error("[Dashboard] Failed to fetch dashboard data:", error);
+      setFetchError(error.message || 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     setLoading(true);
     fetchData();
-    const intervalId = setInterval(fetchData, 3000);
-    return () => clearInterval(intervalId);
-  }, [selectedDate]);
+
+    // Setup Socket.IO connection
+    if (authToken && !socketRef.current) {
+      socketRef.current = io('http://localhost:3000', {
+        auth: { token: authToken }
+      });
+
+      socketRef.current.on('connect', () => {
+        console.log('[Socket] Connected to realtime event stream.');
+      });
+
+      socketRef.current.on('fatigue_event', (payload) => {
+        console.log('[Socket] Received fatigue event:', payload);
+        // We can just refetch data when an event occurs for simplicity
+        // or incrementally update state. Given it's a dashboard, a quick refetch is fine and ensures consistency.
+        fetchData(); 
+      });
+
+      socketRef.current.on('trip_status_change', (payload) => {
+        console.log('[Socket] Received trip status change:', payload);
+        fetchData();
+      });
+
+      socketRef.current.on('disconnect', () => {
+        console.log('[Socket] Disconnected.');
+      });
+    }
+
+    return () => {
+      // Disconnect socket on unmount
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [authToken, selectedDate]); // re-run if date or token changes
 
   const getMockTrendData = () => [
     { time: '08:00', level: 1 },
@@ -88,7 +121,7 @@ export default function DashboardOverview() {
         <div>
           <h1>Fleet Dashboard</h1>
           <div style={{color: 'var(--text-muted)'}}>
-            {selectedDate === getTodayString() ? 'Live Monitoring Active' : `Viewing Historical Data: ${selectedDate}`}
+            {selectedDate === getTodayString() ? 'Live Monitoring Active (Socket)' : `Viewing Historical Data: ${selectedDate}`}
           </div>
         </div>
         <div className="date-filter" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

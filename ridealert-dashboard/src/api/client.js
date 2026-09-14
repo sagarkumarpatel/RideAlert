@@ -20,9 +20,14 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      console.warn('Auth token expired or invalid. Redirecting to login.');
-      localStorage.removeItem('adminToken');
-      window.location.href = '/login';
+      // Don't redirect if the error is from the login or signup endpoint itself
+      const isAuthEndpoint = error.config?.url?.includes('/auth/admin-login') || error.config?.url?.includes('/auth/admin-signup');
+      
+      if (!isAuthEndpoint) {
+        console.warn('Auth token expired or invalid. Redirecting to login.');
+        localStorage.removeItem('adminToken');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

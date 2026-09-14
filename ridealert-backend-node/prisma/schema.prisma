@@ -7,31 +7,35 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Fleet {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
+model Company {
+  id          String   @id @default(uuid())
+  companyName String
+  createdAt   DateTime @default(now())
 
-  users    User[]
-  drivers  Driver[]
-  vehicles Vehicle[]
+  users         User[]
+  drivers       Driver[]
+  vehicles      Vehicle[]
+  trips         Trip[]
+  fatigueEvents FatigueEvent[]
+  alerts        Alert[]
 }
 
 model User {
   id           String   @id @default(uuid())
-  fleetId      String?
+  companyId    String?
+  username     String   @unique
   email        String   @unique
   passwordHash String
   role         String   @default("OPERATOR") // OPERATOR | ADMIN
   createdAt    DateTime @default(now())
 
-  fleet        Fleet?  @relation(fields: [fleetId], references: [id])
+  company      Company?  @relation(fields: [companyId], references: [id])
   alerts       Alert[]
 }
 
 model Driver {
   id                 String   @id @default(uuid())
-  fleetId            String?
+  companyId          String?
   name               String
   address            String?
   personalContact    String?
@@ -40,7 +44,7 @@ model Driver {
   defaultVehicleType String   // TWO_WHEELER | TRUCK
   createdAt          DateTime @default(now())
 
-  fleet   Fleet?   @relation(fields: [fleetId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
   devices Device[]
   trips   Trip[]
   alerts  Alert[]
@@ -48,13 +52,13 @@ model Driver {
 
 model Vehicle {
   id                 String   @id @default(uuid())
-  fleetId            String?
+  companyId          String?
   registrationNumber String   @unique
   vehicleType        String   // TWO_WHEELER | TRUCK
   createdAt          DateTime @default(now())
 
-  fleet Fleet? @relation(fields: [fleetId], references: [id])
-  trips Trip[]
+  company Company? @relation(fields: [companyId], references: [id])
+  trips   Trip[]
 }
 
 model Device {
@@ -72,6 +76,7 @@ model Device {
 
 model Trip {
   id             String    @id @default(uuid())
+  companyId      String?
   driverId       String?
   vehicleId      String?
   deviceId       String?
@@ -80,6 +85,7 @@ model Trip {
   status         String    @default("ACTIVE") // ACTIVE | COMPLETED
   createdAt      DateTime  @default(now())
 
+  company       Company?       @relation(fields: [companyId], references: [id])
   driver        Driver?        @relation(fields: [driverId], references: [id], onDelete: Cascade)
   vehicle       Vehicle?       @relation(fields: [vehicleId], references: [id])
   device        Device?        @relation(fields: [deviceId], references: [id])
@@ -89,6 +95,7 @@ model Trip {
 
 model FatigueEvent {
   id              String   @id @default(uuid())
+  companyId       String?
   tripId          String?
   eventTimestamp  DateTime
   fatigueLevel    String   // NORMAL | WARNING | CRITICAL
@@ -100,12 +107,14 @@ model FatigueEvent {
   longitude       Decimal?
   createdAt       DateTime @default(now())
 
-  trip   Trip?   @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  alerts Alert[]
+  company Company? @relation(fields: [companyId], references: [id])
+  trip    Trip?    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  alerts  Alert[]
 }
 
 model Alert {
   id             String    @id @default(uuid())
+  companyId      String?
   fatigueEventId String?
   driverId       String?
   severity       String    // WARNING | CRITICAL
@@ -114,6 +123,7 @@ model Alert {
   acknowledgedAt DateTime?
   createdAt      DateTime  @default(now())
 
+  company      Company?      @relation(fields: [companyId], references: [id])
   fatigueEvent FatigueEvent? @relation(fields: [fatigueEventId], references: [id], onDelete: Cascade)
   driver       Driver?       @relation(fields: [driverId], references: [id], onDelete: Cascade)
   user         User?         @relation(fields: [acknowledgedBy], references: [id])

@@ -6,6 +6,7 @@ import DriversList from './features/dashboard/DriversList';
 import AddDriver from './features/dashboard/AddDriver';
 import EventsList from './features/dashboard/EventsList';
 import Login from './features/auth/Login';
+import Signup from './features/auth/Signup';
 import { NeatGradient } from "@firecms/neat";
 import './index.css';
 
@@ -316,6 +317,9 @@ function App() {
       <Routes>
         <Route path="/login" element={
           authToken ? <Navigate to="/" replace /> : <Login setAuthToken={setAuthToken} />
+        } />
+        <Route path="/signup" element={
+          authToken ? <Navigate to="/" replace /> : <Signup setAuthToken={setAuthToken} />
         } />
         <Route path="/" element={
           <ProtectedRoute>

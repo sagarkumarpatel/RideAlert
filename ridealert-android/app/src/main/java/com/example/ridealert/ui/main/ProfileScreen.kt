@@ -12,7 +12,10 @@ import com.example.ridealert.data.ApiClient
 import com.example.ridealert.data.DriverProfile
 import com.example.ridealert.data.local.SessionManager
 import kotlinx.coroutines.launch
-
+import com.example.ridealert.theme.GlassSurfaceDark
+import com.example.ridealert.theme.GlassBorder
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Color
 @Composable
 fun ProfileScreen() {
     val context = LocalContext.current
@@ -65,10 +68,12 @@ fun ProfileScreen() {
             )
             
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = GlassSurfaceDark
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {

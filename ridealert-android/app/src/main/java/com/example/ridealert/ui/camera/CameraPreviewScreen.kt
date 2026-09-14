@@ -29,6 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import com.example.ridealert.theme.GlassSurfaceDark
+import com.example.ridealert.theme.GlassBorder
 import com.example.ridealert.detection.EyeStateTracker
 import com.example.ridealert.detection.FatigueStateMachine
 import com.example.ridealert.detection.FatigueLevel
@@ -562,16 +566,18 @@ fun CameraPreviewScreen(driverId: String) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                                 .background(
-                                    color = if (isUrgent) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+                                    color = if (isUrgent) MaterialTheme.colorScheme.error.copy(alpha = 0.8f) else GlassSurfaceDark,
                                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
                                 )
+                                .border(1.dp, GlassBorder, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = if (isUrgent) "Micro-sleep Warning!" else "Eye-closure detected",
-                                color = if (isUrgent) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.primary,
+                                color = if (isUrgent) MaterialTheme.colorScheme.onError else Color.White,
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             )
                         }
@@ -660,14 +666,21 @@ fun CameraPreviewScreen(driverId: String) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.9f)),
+                        .background(Color.Black.copy(alpha = 0.6f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(24.dp)
+                            .background(GlassSurfaceDark, shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+                            .padding(32.dp)
+                    ) {
                         Text(
                             text = "WAKE UP!\nDROWSINESS DETECTED!",
-                            color = MaterialTheme.colorScheme.onError,
-                            style = MaterialTheme.typography.displayMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.padding(16.dp)
                         )
@@ -681,10 +694,10 @@ fun CameraPreviewScreen(driverId: String) {
                                 mediaPlayer = null
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                            modifier = Modifier.height(56.dp).padding(horizontal = 32.dp),
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onError)
+                            modifier = Modifier.defaultMinSize(minWidth = 140.dp, minHeight = 44.dp).height(56.dp).padding(horizontal = 16.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("DISMISS ALARM", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+                            Text("DISMISS ALARM", color = MaterialTheme.colorScheme.onError, style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                         }
                     }
                 }
@@ -699,14 +712,21 @@ fun CameraPreviewScreen(driverId: String) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.9f)),
+                        .background(Color.Black.copy(alpha = 0.6f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(24.dp)
+                            .background(GlassSurfaceDark, shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+                            .padding(32.dp)
+                    ) {
                         Text(
                             text = "EMERGENCY!\nMOTION DETECTED!",
-                            color = MaterialTheme.colorScheme.onError,
-                            style = MaterialTheme.typography.displayMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.padding(16.dp)
                         )
@@ -722,10 +742,10 @@ fun CameraPreviewScreen(driverId: String) {
                                 vibrator.cancel()
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                            modifier = Modifier.height(56.dp).padding(horizontal = 32.dp),
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onError)
+                            modifier = Modifier.defaultMinSize(minWidth = 140.dp, minHeight = 44.dp).height(56.dp).padding(horizontal = 16.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("DISMISS ALARM", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+                            Text("DISMISS ALARM", color = MaterialTheme.colorScheme.onError, style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                         }
                     }
                 }

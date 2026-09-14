@@ -11,7 +11,10 @@ import androidx.compose.ui.unit.dp
 import com.example.ridealert.data.ApiClient
 import com.example.ridealert.data.DriverOverview
 import com.example.ridealert.data.local.SessionManager
-
+import com.example.ridealert.theme.GlassSurfaceDark
+import com.example.ridealert.theme.GlassBorder
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Color
 @Composable
 fun ActivityScreen() {
     val context = LocalContext.current
@@ -64,10 +67,13 @@ fun ActivityScreen() {
             )
             
             Card(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = GlassSurfaceDark
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {

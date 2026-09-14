@@ -80,6 +80,30 @@ export default function IncidentMap({ events }) {
                   <p style={{ margin: '4px 0' }}><strong>Driver ID:</strong> {event.trip?.driverId || 'Unknown'}</p>
                   <p style={{ margin: '4px 0' }}><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</p>
                   <p style={{ margin: '4px 0' }}><strong>Signal:</strong> {event.primarySignal}</p>
+                  
+                  {event.latitude && event.longitude && (
+                    <div style={{ marginTop: '12px' }}>
+                      <a 
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-block',
+                          padding: '8px 12px',
+                          background: '#FF5238',
+                          color: '#fff',
+                          textDecoration: 'none',
+                          borderRadius: '6px',
+                          fontWeight: 'bold',
+                          textAlign: 'center',
+                          width: '100%',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        📍 Navigate to Location
+                      </a>
+                    </div>
+                  )}
                 </div>
               </Popup>
             </Marker>

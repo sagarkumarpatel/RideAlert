@@ -228,15 +228,42 @@ export default function DashboardOverview({ authToken }) {
           <h2 style={{marginTop: 0, marginBottom: '24px', fontSize: '1.2rem'}}>Recent Alerts</h2>
           <div className="event-log">
             {recentEvents.length > 0 ? recentEvents.slice(0, 5).map(event => (
-              <div key={event.id} className={`event-item ${event.fatigueLevel.toLowerCase()}`}>
+              <div key={event.id} className={`event-item ${event.fatigueLevel.toLowerCase()}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{fontWeight: 600}}>Driver: {event.trip?.driverId || 'Unknown'}</div>
                   <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>
                     {new Date(event.eventTimestamp).toLocaleTimeString()} • {event.primarySignal}
                   </div>
                 </div>
-                <div style={{fontWeight: 600, color: event.fatigueLevel === 'CRITICAL' ? 'var(--critical-red)' : 'var(--warning-yellow)'}}>
-                  {event.fatigueLevel}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{fontWeight: 600, color: event.fatigueLevel === 'CRITICAL' ? 'var(--critical-red)' : 'var(--warning-yellow)'}}>
+                    {event.fatigueLevel}
+                  </div>
+                  {event.latitude && event.longitude && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Navigate to Location"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(255,255,255,0.1)',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        color: '#fff',
+                        textDecoration: 'none',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                      </svg>
+                    </a>
+                  )}
                 </div>
               </div>
             )) : (

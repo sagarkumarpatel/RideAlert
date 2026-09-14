@@ -187,10 +187,11 @@ fun CameraPreviewScreen(driverId: String) {
 
     DisposableEffect(lifecycleOwner) {
         driftDetector.onDriftDetected = { isWarning ->
-            fatigueStateMachine.reportMotionPattern(isWarning)
-            
-            // --- Immediate Alarm, Vibration, and Toast for Shake/Fall ---
-            android.widget.Toast.makeText(context, "Emergency: Rapid Motion / Fall Detected!", android.widget.Toast.LENGTH_LONG).show()
+            if (activeTripIdState.value != null) {
+                fatigueStateMachine.reportMotionPattern(isWarning)
+                
+                // --- Immediate Alarm, Vibration, and Toast for Shake/Fall ---
+                android.widget.Toast.makeText(context, "Emergency: Rapid Motion / Fall Detected!", android.widget.Toast.LENGTH_LONG).show()
             
             showEmergencyOverlay = true
             
@@ -212,11 +213,12 @@ fun CameraPreviewScreen(driverId: String) {
                 vibrator.vibrate(pattern, 0)
             }
 
-            // Insert MOTION event locally and sync via Retrofit immediately
+            // Insert MOTION event and sync
             val currentTripId = activeTripIdState.value
             if (currentTripId != null) {
                 coroutineScope.launch {
                     val token = sessionManager.getAuthToken() ?: ""
+                    var retrofitSuccess = false
                     try {
                         com.example.ridealert.data.ApiClient.instance.reportFatigueEvent(
                             tripId = currentTripId,
@@ -230,35 +232,39 @@ fun CameraPreviewScreen(driverId: String) {
                             )
                         )
                         Log.d("CameraPreview", "Emergency event synced immediately via Retrofit")
+                        retrofitSuccess = true
                     } catch (e: Exception) {
-                        Log.e("CameraPreview", "Failed immediate sync via Retrofit", e)
+                        Log.e("CameraPreview", "Failed immediate sync via Retrofit, will store locally", e)
                     }
 
-                    try {
-                        val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
-                        db.fatigueEventDao().insertEvent(
-                            com.example.ridealert.data.local.FatigueEventEntity(
-                                tripId = currentTripId,
-                                timestamp = System.currentTimeMillis().toString(),
-                                fatigueLevel = FatigueLevel.CRITICAL.name,
-                                primarySignal = "MOTION",
-                                eyeClosureScore = 0.0,
-                                latitude = currentLocationState.value?.latitude,
-                                longitude = currentLocationState.value?.longitude
+                    if (!retrofitSuccess) {
+                        try {
+                            val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
+                            db.fatigueEventDao().insertEvent(
+                                com.example.ridealert.data.local.FatigueEventEntity(
+                                    tripId = currentTripId,
+                                    timestamp = System.currentTimeMillis().toString(),
+                                    fatigueLevel = FatigueLevel.CRITICAL.name,
+                                    primarySignal = "MOTION",
+                                    eyeClosureScore = 0.0,
+                                    latitude = currentLocationState.value?.latitude,
+                                    longitude = currentLocationState.value?.longitude
+                                )
                             )
-                        )
-                        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
-                            .setConstraints(
-                                androidx.work.Constraints.Builder()
-                                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                                    .build()
-                            ).build()
-                        androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
-                        Log.d("CameraPreview", "Saved MOTION event locally!")
-                    } catch (e: Exception) {
-                        Log.e("CameraPreview", "Failed to save MOTION event", e)
+                            val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
+                                .setConstraints(
+                                    androidx.work.Constraints.Builder()
+                                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                                        .build()
+                                ).build()
+                            androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
+                            Log.d("CameraPreview", "Saved MOTION event locally!")
+                        } catch (e: Exception) {
+                            Log.e("CameraPreview", "Failed to save MOTION event", e)
+                        }
                     }
                 }
+            }
             }
         }
         driftDetector.start()
@@ -386,6 +392,7 @@ fun CameraPreviewScreen(driverId: String) {
             val currentTripId = activeTripIdState.value
             if ((newState == FatigueLevel.WARNING || newState == FatigueLevel.CRITICAL) && currentTripId != null) {
                 coroutineScope.launch {
+                    var retrofitSuccess = false
                     try {
                         val token = sessionManager.getAuthToken() ?: ""
                         com.example.ridealert.data.ApiClient.instance.reportFatigueEvent(
@@ -401,35 +408,38 @@ fun CameraPreviewScreen(driverId: String) {
                             )
                         )
                         Log.d("CameraPreview", "Facial event synced immediately via Retrofit")
+                        retrofitSuccess = true
                     } catch (e: Exception) {
-                        Log.e("CameraPreview", "Failed immediate sync for facial event", e)
+                        Log.e("CameraPreview", "Failed immediate sync for facial event, will store locally", e)
                     }
 
-                    try {
-                        val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
-                        val entity = com.example.ridealert.data.local.FatigueEventEntity(
-                            tripId = currentTripId,
-                            timestamp = System.currentTimeMillis().toString(),
-                            fatigueLevel = newState.name,
-                            primarySignal = "FACIAL",
-                            eyeClosureScore = 1.0,
-                            latitude = currentLocationState.value?.latitude,
-                            longitude = currentLocationState.value?.longitude
-                        )
-                        db.fatigueEventDao().insertEvent(entity)
-                        
-                        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
-                            .setConstraints(
-                                androidx.work.Constraints.Builder()
-                                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                                    .build()
-                            ).build()
-                        
-                        androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
-                        
-                        Log.d("CameraPreview", "Successfully saved $newState event locally and enqueued sync worker!")
-                    } catch (e: Exception) {
-                        Log.e("CameraPreview", "Failed to save event locally", e)
+                    if (!retrofitSuccess) {
+                        try {
+                            val db = com.example.ridealert.data.local.AppDatabase.getDatabase(context)
+                            val entity = com.example.ridealert.data.local.FatigueEventEntity(
+                                tripId = currentTripId,
+                                timestamp = System.currentTimeMillis().toString(),
+                                fatigueLevel = newState.name,
+                                primarySignal = "FACIAL",
+                                eyeClosureScore = 1.0,
+                                latitude = currentLocationState.value?.latitude,
+                                longitude = currentLocationState.value?.longitude
+                            )
+                            db.fatigueEventDao().insertEvent(entity)
+                            
+                            val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.ridealert.data.worker.FatigueSyncWorker>()
+                                .setConstraints(
+                                    androidx.work.Constraints.Builder()
+                                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                                        .build()
+                                ).build()
+                            
+                            androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
+                            
+                            Log.d("CameraPreview", "Successfully saved $newState event locally and enqueued sync worker!")
+                        } catch (e: Exception) {
+                            Log.e("CameraPreview", "Failed to save event locally", e)
+                        }
                     }
                 }
             }

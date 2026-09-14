@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import DashboardOverview from './features/dashboard/DashboardOverview';
 import DriverOverview from './features/dashboard/DriverOverview';
@@ -19,10 +19,19 @@ const Icons = {
 
 function Layout({ children, onLogout, theme, toggleTheme }) {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   return (
     <div className="dashboard-layout">
-      <nav className="sidebar">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      
+      <nav className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="logo-container">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#logoGradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <defs>
@@ -37,16 +46,16 @@ function Layout({ children, onLogout, theme, toggleTheme }) {
         </div>
         
         <div className="nav-links">
-          <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
+          <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>
             <Icons.Dashboard /> Overview
           </Link>
-          <Link to="/drivers" className={`nav-link ${location.pathname === '/drivers' ? 'active' : ''}`}>
+          <Link to="/drivers" className={`nav-link ${location.pathname === '/drivers' ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>
             <Icons.Drivers /> Manage Drivers
           </Link>
-          <Link to="/add-driver" className={`nav-link ${location.pathname === '/add-driver' ? 'active' : ''}`}>
+          <Link to="/add-driver" className={`nav-link ${location.pathname === '/add-driver' ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>
             <Icons.AddDriver /> Add Driver
           </Link>
-          <Link to="/events" className={`nav-link ${location.pathname === '/events' ? 'active' : ''}`}>
+          <Link to="/events" className={`nav-link ${location.pathname === '/events' ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>
             <Icons.Activity /> Fatigue Events
           </Link>
         </div>
@@ -83,7 +92,18 @@ function Layout({ children, onLogout, theme, toggleTheme }) {
       </nav>
       
       <div className="main-content-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '24px 40px 0', flexShrink: 0 }}>
+        <div className="topbar">
+          <button 
+            className="mobile-menu-btn"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          
           <button
             onClick={toggleTheme}
             style={{
@@ -107,7 +127,7 @@ function Layout({ children, onLogout, theme, toggleTheme }) {
             )}
           </button>
         </div>
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div className="scrollable-content" style={{ flex: 1, overflow: 'auto' }}>
           {children}
         </div>
       </div>

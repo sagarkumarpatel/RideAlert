@@ -1,24 +1,24 @@
 :root {
   /* Core Backgrounds */
-  --bg-dark: #121620; /* Deep slate background */
-  --bg-card: #202634; /* Slightly elevated card panel */
+  --bg-dark: transparent; /* Changed to transparent for canvas */
+  --bg-card: rgba(18, 22, 32, 0.65); /* Glassmorphism dark mode card */
   
   /* Accents */
-  --accent-coral: #FF5238; /* Vibrant coral for primary CTAs/Highlights */
-  --accent-cyan: #3b82f6; /* Secondary muted slate blue for contrast */
+  --accent-coral: #E0115F; /* Deep Magenta for NeatGradient */
+  --accent-cyan: #3b82f6;
   
   /* Text */
   --text-main: #ffffff;
-  --text-muted: #94A3B8;
+  --text-muted: #E2E8F0; /* High contrast muted text */
   
   /* Status Colors */
   --warning-yellow: #F59E0B;
-  --critical-red: #EF4444;
+  --critical-red: #E0115F;
   --success-green: #10B981;
   
   /* Borders & Shadows */
-  --border-color: rgba(255, 255, 255, 0.05);
-  --glow-shadow: 0 0 15px rgba(255, 82, 56, 0.2);
+  --border-color: rgba(255, 255, 255, 0.4); /* Crisp subtle borders */
+  --glow-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15); /* Soft diffuse shadows */
   
   /* Additional UI Elements */
   --input-bg: rgba(255, 255, 255, 0.05);
@@ -30,25 +30,25 @@
 
 :root[data-theme="light"] {
   /* Core Backgrounds */
-  --bg-dark: #F8F9FA; /* Off-white background */
-  --bg-card: #FFFFFF; /* Pure white cards */
+  --bg-dark: transparent;
+  --bg-card: rgba(255, 255, 255, 0.65); /* Glassmorphism light mode card */
   
   /* Accents */
-  --accent-coral: #EAA000; /* Warm Yellow / Amber Gold */
-  --accent-cyan: #1E293B; /* Deep Navy Slate */
+  --accent-coral: #CB9854; /* Warm Amber for NeatGradient */
+  --accent-cyan: #1E293B;
   
   /* Text */
   --text-main: #1E293B; /* Charcoal Slate */
-  --text-muted: #64748B;
+  --text-muted: #334155; /* High contrast slate */
   
   /* Status Colors */
   --warning-yellow: #F59E0B;
-  --critical-red: #EF4444;
+  --critical-red: #E0115F;
   --success-green: #10B981;
   
   /* Borders & Shadows */
-  --border-color: #E9ECEF;
-  --glow-shadow: 0 4px 15px rgba(234, 160, 0, 0.2);
+  --border-color: rgba(255, 255, 255, 0.4);
+  --glow-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
   
   /* Additional UI Elements */
   --input-bg: #F1F3F5;
@@ -61,7 +61,7 @@
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-dark);
+  background-color: transparent;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -70,10 +70,11 @@ body {
 
 .glass-panel {
   background: var(--bg-card);
+  backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: var(--glow-shadow);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -107,7 +108,8 @@ body {
 
 .sidebar {
   width: 260px;
-  background: var(--bg-dark);
+  background: var(--bg-card);
+  backdrop-filter: blur(20px) saturate(180%);
   border-right: 1px solid var(--border-color);
   padding: 32px 24px;
   display: flex;

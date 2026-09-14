@@ -229,6 +229,12 @@ app.post('/api/trips/:tripId/fatigue-events', authenticateJWT, async (req, res) 
     // If timestamp is a numeric string (e.g., "1726090432134"), convert it to a number first
     const parsedTimestamp = isNaN(Number(timestamp)) ? new Date(timestamp) : new Date(Number(timestamp));
 
+    // Verify trip exists before attempting to insert an event to avoid Foreign Key violations
+    const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+    if (!trip) {
+      return res.status(404).json({ error: 'Trip not found. The event cannot be associated with a non-existent trip.' });
+    }
+
     const event = await prisma.fatigueEvent.create({
       data: {
         tripId,

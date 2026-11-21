@@ -199,15 +199,7 @@ fun CameraPreviewScreen(driverId: String) {
             
             showEmergencyOverlay = true
             
-            try {
-                val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
-                emergencyMediaPlayer?.release()
-                emergencyMediaPlayer = android.media.MediaPlayer.create(context, uri)
-                emergencyMediaPlayer?.isLooping = true
-                emergencyMediaPlayer?.start()
-            } catch (e: Exception) {
-                Log.e("CameraPreview", "Failed to play emergency alarm", e)
-            }
+            emergencyMediaPlayer = playAlarmSound(context, emergencyMediaPlayer)
             
             val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
             val pattern = longArrayOf(0, 500, 200, 500, 200, 500)
@@ -275,8 +267,8 @@ fun CameraPreviewScreen(driverId: String) {
         
         onDispose {
             driftDetector.stop()
-            mediaPlayer?.release()
-            emergencyMediaPlayer?.release()
+            mediaPlayer = stopAlarmSound(mediaPlayer)
+            emergencyMediaPlayer = stopAlarmSound(emergencyMediaPlayer)
         }
     }
     
@@ -345,13 +337,8 @@ fun CameraPreviewScreen(driverId: String) {
                 showCriticalOverlay = false
                 showEmergencyOverlay = false
                 
-                mediaPlayer?.stop()
-                mediaPlayer?.release()
-                mediaPlayer = null
-                
-                emergencyMediaPlayer?.stop()
-                emergencyMediaPlayer?.release()
-                emergencyMediaPlayer = null
+                mediaPlayer = stopAlarmSound(mediaPlayer)
+                emergencyMediaPlayer = stopAlarmSound(emergencyMediaPlayer)
                 
                 val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
                 vibrator.cancel()
@@ -368,15 +355,7 @@ fun CameraPreviewScreen(driverId: String) {
             val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
             if (newState == FatigueLevel.CRITICAL) {
                 showCriticalOverlay = true
-                try {
-                    val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
-                    mediaPlayer?.release()
-                    mediaPlayer = android.media.MediaPlayer.create(context, uri)
-                    mediaPlayer?.isLooping = true
-                    mediaPlayer?.start()
-                } catch (e: Exception) {
-                    Log.e("CameraPreview", "Failed to play alarm", e)
-                }
+                mediaPlayer = playAlarmSound(context, mediaPlayer)
                 
                 val pattern = longArrayOf(0, 500, 200, 500, 200, 500)
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -386,9 +365,7 @@ fun CameraPreviewScreen(driverId: String) {
                 }
             } else if (newState == FatigueLevel.NORMAL) {
                 showCriticalOverlay = false
-                mediaPlayer?.stop()
-                mediaPlayer?.release()
-                mediaPlayer = null
+                mediaPlayer = stopAlarmSound(mediaPlayer)
                 vibrator.cancel()
             }
             
@@ -503,9 +480,7 @@ fun CameraPreviewScreen(driverId: String) {
                                         if (!result.isEyesClosed && showCriticalOverlay) {
                                             fatigueStateMachine.reset()
                                             showCriticalOverlay = false
-                                            mediaPlayer?.stop()
-                                            mediaPlayer?.release()
-                                            mediaPlayer = null
+                                            mediaPlayer = stopAlarmSound(mediaPlayer)
                                         }
                                         
                                         // Important: Must close the proxy after ML Kit finishes processing
@@ -689,9 +664,7 @@ fun CameraPreviewScreen(driverId: String) {
                             onClick = { 
                                 fatigueStateMachine.reset()
                                 showCriticalOverlay = false
-                                mediaPlayer?.stop()
-                                mediaPlayer?.release()
-                                mediaPlayer = null
+                                mediaPlayer = stopAlarmSound(mediaPlayer)
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
                             modifier = Modifier.defaultMinSize(minWidth = 140.dp, minHeight = 44.dp).height(56.dp).padding(horizontal = 16.dp),
@@ -734,9 +707,7 @@ fun CameraPreviewScreen(driverId: String) {
                         Button(
                             onClick = { 
                                 showEmergencyOverlay = false
-                                emergencyMediaPlayer?.stop()
-                                emergencyMediaPlayer?.release()
-                                emergencyMediaPlayer = null
+                                emergencyMediaPlayer = stopAlarmSound(emergencyMediaPlayer)
                                 
                                 val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
                                 vibrator.cancel()
@@ -765,4 +736,62 @@ fun CameraPreviewScreen(driverId: String) {
             }
         }
     }
+}
+
+private fun playAlarmSound(context: android.content.Context, existingPlayer: android.media.MediaPlayer?): android.media.MediaPlayer? {
+    stopAlarmSound(existingPlayer)
+
+    try {
+        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+        if (audioManager != null) {
+            val currentVol = audioManager.getStreamVolume(android.media.AudioManager.STREAM_ALARM)
+            if (currentVol == 0) {
+                val maxVol = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM)
+                val targetVol = (maxVol * 0.7f).toInt().coerceAtLeast(1)
+                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, targetVol, 0)
+            }
+        }
+    } catch (_: Exception) {}
+
+    val candidateUris = listOfNotNull(
+        android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM),
+        android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
+        android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE),
+        android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI,
+        android.provider.Settings.System.DEFAULT_NOTIFICATION_URI
+    )
+
+    val audioAttributes = android.media.AudioAttributes.Builder()
+        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+
+    for (uri in candidateUris) {
+        try {
+            val player = android.media.MediaPlayer().apply {
+                setAudioAttributes(audioAttributes)
+                setDataSource(context, uri)
+                isLooping = true
+                prepare()
+                start()
+            }
+            return player
+        } catch (e: Exception) {
+            Log.w("CameraPreview", "Failed to initialize alarm sound with URI: $uri", e)
+        }
+    }
+
+    return null
+}
+
+private fun stopAlarmSound(player: android.media.MediaPlayer?): android.media.MediaPlayer? {
+    try {
+        if (player != null && player.isPlaying) {
+            player.stop()
+        }
+        player?.release()
+    } catch (e: Exception) {
+        Log.e("CameraPreview", "Error stopping alarm player", e)
+    }
+    return null
 }

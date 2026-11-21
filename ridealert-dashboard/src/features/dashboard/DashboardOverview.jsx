@@ -72,7 +72,8 @@ export default function DashboardOverview({ authToken }) {
 
     // Setup Socket.IO connection
     if (authToken && !socketRef.current) {
-      socketRef.current = io('http://localhost:3000', {
+      const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : 'http://localhost:3000');
+      socketRef.current = io(socketUrl, {
         auth: { token: authToken }
       });
 

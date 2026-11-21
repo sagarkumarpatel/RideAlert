@@ -1,136 +1,214 @@
-# 🛡️ RideAlert Dashboard
+# 🛡️ RideAlert — Real-Time Multi-Tenant Driver Fatigue & Safety Ecosystem
 
-RideAlert is a comprehensive, real-time driver monitoring and safety ecosystem designed to prevent accidents caused by fatigue, microsleeps, and erratic driving behavior. The system operates as a **Multi-Tenant SaaS platform**, allowing independent companies to register, isolate their driver fleets, and monitor telematics through a real-time web dashboard.
+RideAlert is a production-grade, real-time driver monitoring and safety ecosystem engineered to prevent road accidents caused by driver fatigue, micro-sleeps, and sudden physical impacts/falls. 
 
-The system consists of an Android client application running on edge devices in the vehicle, a robust backend API for event processing, and a high-performance web dashboard (this repository) for real-time fleet management.
+The platform operates as a **Multi-Tenant SaaS architecture**, allowing transport companies and fleet operators to register, manage driver fleets with strict data isolation, and monitor live vehicle telematics through a real-time web command dashboard.
 
 ---
 
-## 🚀 1. Project Overview & Architecture
+## 🌐 Live Production Deployments & Mobile App
 
-**Purpose:** 
-The `ridealert-dashboard` serves as the central command center for fleet managers to monitor driver safety in real time. It aggregates telemetric data, visualizes fatigue trends, and highlights critical incidents (e.g., micro-sleeps or sudden impacts) immediately as they are reported from the driver's device.
+| Component | Platform / Host | Live Link / Asset |
+| :--- | :--- | :--- |
+| **Web Dashboard** | **Vercel** | [Live Fleet Dashboard](https://ridealert-dashboard.vercel.app) |
+| **Backend API** | **Render (Node.js)** | [`https://ridealert-backend-lo8w.onrender.com`](https://ridealert-backend-lo8w.onrender.com) |
+| **Database** | **Neon (AWS US-East)** | Serverless PostgreSQL (Prisma ORM) |
+| **Android App** | **Standalone APK** | [📱 Download RideAlert.apk](./apk/RideAlert.apk) |
 
-**System Architecture Flow:**
-1. **Edge Detection (Android App):** The driver's Android device runs continuous, offline-first computer vision (ML Kit) and hardware sensor (Accelerometer/Gyroscope) analysis to detect fatigue and motion anomalies locally.
-2. **Event Sync (Backend Node.js API):** Critical incidents (Warning/Critical fatigue) or sudden impacts trigger an immediate payload to the backend via HTTP/REST. If offline, events are cached via Room DB and synced later via Android WorkManager.
-3. **Data Visualization (React Dashboard & WebSockets):** The web dashboard connects to the backend via **Socket.io** event channels (`io.to(companyId).emit`). This provides instant, zero-latency telemetry pushes from the backend to the dashboard, replacing old HTTP polling mechanics.
+---
+
+## 📱 Mobile App Download & Installation Guide
+
+You can install and run the standalone RideAlert mobile client directly on any Android device without Android Studio:
+
+### 📥 Download Links:
+* **Repository Link:** [Download `apk/RideAlert.apk`](./apk/RideAlert.apk)
+* **Direct GitHub Raw Download:** [https://github.com/sagarkumarpatel/RideAlert/raw/main/apk/RideAlert.apk](https://github.com/sagarkumarpatel/RideAlert/raw/main/apk/RideAlert.apk)
+
+### 📲 Quick Installation Steps:
+1. Download **`RideAlert.apk`** to your Android phone (via Chrome, WhatsApp, or Google Drive).
+2. Tap the downloaded file in your **Downloads** folder or notification shade.
+3. If prompted by Android, enable **"Allow from this source"** (or *Install unknown apps*).
+4. Tap **Install** and open **RideAlert**.
+5. Grant **Camera** and **Location** permissions when prompted.
+6. Log in with your **Driver ID** created on the dashboard, tap **Start Driving**, and you are live!
+
+---
+
+## 🚀 1. System Architecture & Real-Time Flow
+
+```
+   ┌────────────────────────────────────────────────────────┐
+   │             Edge Device (Android Client)               │
+   │  • Front Camera: Google ML Kit Face & Eye Detection    │
+   │  • Hardware Sensors: Accelerometer & Gyroscope Fusion  │
+   │  • Offline Resilience: SQLite Room DB + WorkManager    │
+   └───────────────────────────┬────────────────────────────┘
+                               │
+                      HTTPS / REST Payloads
+                               │
+                               ▼
+   ┌────────────────────────────────────────────────────────┐
+   │            Backend Server (Node.js & Express)          │
+   │  • Tenant Validation & JWT Scoping (companyId)         │
+   │  • Prisma ORM Engine                                   │
+   │  • Socket.io Room Partitioning: io.to(companyId)       │
+   └─────────────┬───────────────────────────┬──────────────┘
+                 │                           │
+          PostgreSQL Pooler          WebSockets Stream
+                 │                           │
+                 ▼                           ▼
+   ┌───────────────────────────┐ ┌───────────────────────────┐
+   │    Neon Cloud Database    │ │   React Web Dashboard     │
+   │  • Multi-Tenant Tables    │ │  • Zero-Latency Live Feed │
+   │  • Event Logs & Telemetry │ │  • Leaflet GPS Nav Links  │
+   │  • Relational Schema      │ │  • 3D Animated Background │
+   └───────────────────────────┘ └───────────────────────────┘
+```
+
+1. **Edge Detection (Android App):** Runs continuous, local computer vision (ML Kit) and hardware sensor analysis directly on the device. No video frames leave the device, preserving privacy and eliminating network latency.
+2. **Instant Event Ingestion (Backend API):** When a threshold is crossed (Warning/Critical fatigue or sudden impact), the client immediately dispatches a JSON payload to the backend via Retrofit over HTTPS.
+3. **Offline Sync Guarantee (Room DB + WorkManager):** If the vehicle passes through an area without cellular network coverage, incidents are safely persisted in a local Room database and automatically dispatched once connectivity is restored.
+4. **Live Telemetry Broadcast (Socket.io):** The backend saves the event to Neon PostgreSQL and immediately broadcasts it via **Socket.io** room channels (`io.to(companyId).emit('fatigue_event', payload)`). The web dashboard updates instantly without HTTP polling.
 
 ---
 
 ## 🏢 2. Multi-Tenant Architecture & Data Isolation
 
-RideAlert utilizes a strict multi-tenant architecture to guarantee zero cross-tenant data leakage.
+RideAlert enforces strict tenant boundary isolation at every layer:
 
-* **Company/Admin Multi-Tenancy:** Each organization registers via the `/admin-signup` endpoint with a unique `companyName`, `email`, and `username`.
-* **Database Isolation:** PostgreSQL/Prisma row-level scoping is enforced via `companyId` foreign keys across the `User`, `Driver`, `Vehicle`, `Trip`, `FatigueEvent`, and `Alert` models.
-* **Authentication:** JWT issuance is strictly scoped to the `companyId`. The login endpoint supports flexible authentication (accepting either `email` or `username` as the `identifier`).
-* **Real-Time Channel Isolation:** Socket.io room partitioning ensures that edge devices only broadcast real-time events to their specific company room (e.g., `io.to(companyId).emit('fatigue_event', payload)`), ensuring dashboards only receive live updates for their own fleets.
+* **Company Registration:** Organizations register via `/api/auth/admin-signup` with their `companyName`, `email`, and `username`.
+* **Database Row-Level Scoping:** PostgreSQL schema utilizes mandatory `companyId` foreign keys across `User`, `Driver`, `Vehicle`, `Trip`, `FatigueEvent`, and `Alert` models.
+* **Authentication Scoping:** JWT tokens issued upon login embed the admin's `companyId`. Middleware verifies that all subsequent fleet management queries are strictly constrained to the authenticated tenant.
+* **Socket.io Room Partitioning:** Admin dashboard connections join a tenant-scoped socket room (`socket.join(companyId)`). Live alerts triggered by a driver are routed exclusively to that company's room, preventing cross-tenant data leakage.
 
 ---
 
 ## 👁️ 3. Eye & Drowsiness Detection Logic (In-Depth)
 
-The Android client handles eye and face tracking locally to ensure zero latency and maximum privacy.
+Face and eye tracking are computed entirely on the edge device using Google ML Kit:
 
-* **Detection Algorithm:** Google ML Kit Vision API (`FaceDetection`).
-* **Configuration:** `PERFORMANCE_MODE_FAST`, `CLASSIFICATION_MODE_ALL`.
-* **Metric Calculation:** The ML Kit provides `leftEyeOpenProbability` and `rightEyeOpenProbability` (ranging from `0.0` to `1.0`).
+* **Detection Engine:** Google ML Kit Vision API (`FaceDetection`).
+* **Settings:** `PERFORMANCE_MODE_FAST`, `CLASSIFICATION_MODE_ALL`.
+* **Eye Openness Metric:** ML Kit calculates continuous probabilities `leftEyeOpenProbability` and `rightEyeOpenProbability` ($0.0 \le p \le 1.0$).
 
-**Exact Thresholds (from `EyeStateTracker.kt`):**
-* **Blink/Closure Threshold:** An eye is considered "closed" if `OpenProbability < 0.3f`. Both eyes must fall below this threshold simultaneously to trigger closure logic (`leftEyeOpen < 0.3f && rightEyeOpen < 0.3f`).
-* **Warning Alert (Drowsiness):** If both eyes remain closed continuously for **`>= 1000ms` (1 second)**, a `WARNING` fatigue event is triggered.
-* **Critical Alert (Micro-sleep):** If both eyes remain closed continuously for **`>= 2000ms` (2 seconds)**, a `CRITICAL` fatigue event is triggered.
+### Detection Thresholds (`EyeStateTracker.kt`):
+* **Closure Threshold:** An eye is registered as closed if `OpenProbability < 0.3f`. Both eyes must fall below this threshold simultaneously (`leftEyeOpen < 0.3f && rightEyeOpen < 0.3f`).
+* **Warning Alert (Drowsiness):** Continuous closure for **$\ge 1000\text{ ms}$ (1.0 second)** triggers a `WARNING` fatigue event.
+* **Critical Alert (Micro-Sleep):** Continuous closure for **$\ge 2000\text{ ms}$ (2.0 seconds)** triggers a `CRITICAL` fatigue event.
 
-**Alert Escalation:**
-* Upon triggering a `CRITICAL` event, the Android app plays an immediate loud alarm (using the default device alarm ringtone), triggers a severe haptic vibration pattern (`[0, 500, 200, 500, 200, 500]`), and displays a red full-screen overlay.
-* This event is instantly dispatched to the backend, storing it in PostgreSQL via Prisma, which the dashboard retrieves immediately via Socket.io.
-
----
-
-## 🚨 4. Fall & Sudden Movement Detection Logic (In-Depth)
-
-The system detects severe impacts, rapid swerving, and falls using device hardware sensors.
-
-* **Sensor Data Ingestion:** Uses Android `SensorManager` listening to `TYPE_ACCELEROMETER` and `TYPE_GYROSCOPE` at `SENSOR_DELAY_NORMAL`.
-
-**Exact Thresholds (from `DriftPatternDetector.kt`):**
-* **Acceleration Spike (Impact/Hard Braking):** The G-force magnitude is calculated as `sqrt(x² + y² + z²)`. If the calculated force exceeds the **`shakeAccelerationThreshold = 15.0f` m/s²** (standard gravity is ~9.8m/s²), a critical `MOTION` event is triggered.
-* **Angular Velocity (Sharp Correction/Swerve):** If the absolute delta between consecutive Gyroscope `X` or `Y` readings exceeds the **`sharpCorrectionThreshold = 2.0f` rad/s**, a critical `MOTION` event is triggered.
-* **Debounce / Event Throttling:** A hardcoded `2000ms` (2-second) cooldown window is applied after any detected event to prevent flooding the backend with duplicate readings during a sustained incident. There is no delayed static verification window; the alert triggers instantaneously upon crossing the threshold.
+### Alert Escalation:
+* Once `CRITICAL` fatigue is detected, the device sounds an urgent alarm (using the system's default alarm ringtone), triggers a continuous haptic pulse sequence (`[0, 500, 200, 500, 200, 500]`), and renders a full-screen red emergency overlay.
+* The incident with driver ID, timestamp, and GPS coordinates is dispatched to the backend and broadcast live to the fleet dashboard.
 
 ---
 
-## ✨ 5. UI/UX Enhancements & 3D Background
+## 🚨 4. Sudden Movement & Fall Detection Logic (In-Depth)
 
-* **Glassmorphism Design System:** The dashboard utilizes responsive frosted glass panels, dynamic contrast scaling, and high-contrast slate typography to provide a premium, modern user experience.
-* **3D NeatGradient Background:** A full-screen, fluid 3D animated mesh gradient is powered by `@firecms/neat` and Three.js. The canvas resolution and camera scaling have been specifically optimized for crisp rendering on mobile viewports.
-* **GPS Navigation Deep-Linking:** The Leaflet OpenStreetMap popups and Recent Alerts feed include direct deep-linking for turn-by-turn navigation (e.g., `https://www.google.com/maps/dir/?api=1&destination=LAT,LNG`), allowing managers to dispatch help instantly.
+The mobile client detects harsh braking, vehicle swerving, and falls using device hardware sensors:
+
+* **Hardware Sensors:** Android `SensorManager` subscribing to `TYPE_ACCELEROMETER` and `TYPE_GYROSCOPE` at `SENSOR_DELAY_NORMAL`.
+
+### Detection Thresholds (`DriftPatternDetector.kt`):
+* **Acceleration Spike (Impact / Hard Braking):** The instantaneous G-force magnitude is calculated as:
+  $$\text{Magnitude} = \sqrt{x^2 + y^2 + z^2}$$
+  If the calculated force exceeds **$15.0\text{ m/s}^2$** (standard gravity is $\approx 9.8\text{ m/s}^2$), a `CRITICAL` motion event is triggered.
+* **Angular Velocity (Sharp Swerve / Drift):** If the absolute delta between consecutive gyroscope $X$ or $Y$ axis readings exceeds **$2.0\text{ rad/s}$**, a `CRITICAL` motion event is triggered.
+* **Debounce Throttling:** A hardcoded **$2000\text{ ms}$ (2-second)** cooldown window prevents multiple duplicated alerts during an ongoing event.
 
 ---
 
-## 🛠️ 6. Tech Stack & Setup Instructions
+## ✨ 5. Dashboard UI/UX & Live Navigation
 
-### Technology Stack
-* **Frontend Dashboard:** React 19, Vite, React Router DOM, Recharts, React-Leaflet, `@firecms/neat`.
-* **Backend API:** Node.js, Express 5, TypeScript, Prisma ORM, PostgreSQL, Socket.io.
-* **Android Client:** Kotlin, Jetpack Compose, CameraX, Google ML Kit Vision, Room Database, WorkManager, Retrofit.
+* **Glassmorphism Design System:** The dashboard features translucent frosted glass panels with dynamic contrast borders and responsive typography.
+* **3D Animated Background:** Features a full-screen, responsive 3D animated mesh gradient powered by `@firecms/neat` and Three.js.
+* **Live Incident Map (Leaflet OpenStreetMap):** Automatically centers and plots color-coded pins for critical (Red) and warning (Orange) incidents.
+* **Turn-by-Turn GPS Navigation Links:** Every incident card and map popup includes a direct turn-by-turn navigation deep-link:
+  ```text
+  https://www.google.com/maps/dir/?api=1&destination=LATITUDE,LONGITUDE
+  ```
+  Clicking the navigation icon opens Google Maps or Apple Maps with directions directly to the driver's location.
 
-### Environment Variables (`.env`)
-Ensure your backend has the following configured:
-```env
-# Backend .env
-DATABASE_URL="postgresql://user:password@localhost:5432/ridealert"
-JWT_SECRET="your_secure_jwt_secret"
-PORT=3000
+---
+
+## 🛠️ 6. Tech Stack & Repository Structure
+
+```
+RideAlert/
+├── apk/                        # Standalone Android APK for direct distribution
+│   └── RideAlert.apk
+├── ridealert-android/          # Android Native Client (Kotlin, Jetpack Compose, ML Kit)
+├── ridealert-backend-node/     # Node.js API & Socket.io Server (Express, Prisma, TypeScript)
+├── ridealert-dashboard/        # React 19 Fleet Dashboard (Vite, Tailwind, Leaflet, Neat)
+└── README.md
 ```
 
-### Local Development Setup
+### Technologies Used:
+* **Mobile Client:** Kotlin, Jetpack Compose, CameraX, Google ML Kit Vision, Android SensorManager, Room Database, WorkManager, Retrofit, OkHttp.
+* **Backend Services:** Node.js, Express 5, TypeScript, Prisma ORM, PostgreSQL (Neon Cloud), Socket.io, JWT, Bcrypt.
+* **Web Dashboard:** React 19, Vite, React Router DOM, Recharts, React-Leaflet, Leaflet, `@firecms/neat`, Socket.io-client.
 
-**1. Clone the repository:**
-```bash
-git clone https://github.com/sagarkumarpatel/RideAlert.git
-```
+---
 
-**2. Database Migration:**
-Run the Prisma migrations to instantiate the multi-tenant schema:
+## 💻 7. Local Development Setup
+
+### Prerequisites
+* Node.js (v18+)
+* PostgreSQL running locally (or a free Neon database connection string)
+* Android Studio (Ladybug / Koala / Electric Eel or newer)
+
+### 1. Backend Setup
 ```bash
 cd ridealert-backend-node
-npx prisma migrate dev --name init
-```
-
-**3. Start the Backend API:**
-```bash
 npm install
+
+# Configure environment variables in .env
+# DATABASE_URL="postgresql://user:password@localhost:5432/ridealert"
+# JWT_SECRET="your-super-secret-key"
+# PORT=3000
+
+npx prisma db push
 npm run dev
 ```
-*(Runs on `http://localhost:3000`)*
+Backend starts on `http://localhost:3000`.
 
-**4. Start the Frontend Dashboard:**
+### 2. Dashboard Setup
 ```bash
 cd ../ridealert-dashboard
 npm install
 npm run dev
 ```
-*(Runs on `http://localhost:5173` or port mapped by Vite)*
+Dashboard opens on `http://localhost:5173`.
 
-**5. Run the Android Client:**
-Open the `ridealert-android` folder in **Android Studio**, build the project, and deploy it to a physical device (Emulators do not support ML Kit camera vision effectively).
+### 3. Android Client Setup
+1. Open the **`ridealert-android`** folder directly in **Android Studio**.
+2. Allow Gradle to sync dependencies.
+3. In `RideAlertApi.kt`, ensure `BASE_URL` points to your backend:
+   ```kotlin
+   private const val BASE_URL = "https://ridealert-backend-lo8w.onrender.com/"
+   ```
+4. Click **Run (Shift + F10)** on a connected physical Android device.
 
 ---
 
-## 🔌 7. API & WebSocket Event Specifications
+## 🔌 8. REST Endpoints & Socket Specifications
 
-### Core REST Endpoints
-* **`POST /api/auth/admin-signup`**: Registers a new tenant company and creates an admin account.
-* **`POST /api/auth/admin-login`**: Authenticates an admin (via `identifier` and `password`) and returns a tenant-scoped JWT.
-* **`POST /api/trips/:tripId/events`**: Ingests a new fatigue or motion event from the edge client (requires valid driver authorization).
-* **`GET /api/dashboard/summary`**: Retrieves high-level KPIs and event trends scoped to the authenticated admin's `companyId`.
+### Core REST Endpoints:
+* `POST /api/auth/admin-signup`: Registers a new tenant organization and creates the master administrator account.
+* `POST /api/auth/admin-login`: Authenticates an admin using email/username and password, returning a scoped JWT.
+* `POST /api/auth/driver-login`: Authenticates an edge driver client using `driverId`.
+* `POST /api/trips`: Initiates a new monitoring shift for a driver.
+* `PATCH /api/trips/:tripId/end`: Concludes an active driving shift.
+* `POST /api/trips/:tripId/fatigue-events`: Ingests a new facial fatigue or sensor motion incident with GPS telemetry.
+* `GET /api/fleet/summary`: Retrieves tenant-scoped summary KPIs and active drivers count.
+* `GET /api/fleet/incidents`: Fetches incident event history with GPS coordinates for map plotting.
 
-### WebSocket (Socket.io) Events
-Connections are established at `ws://localhost:3000`. Admins authenticate their socket connection by passing their JWT token in the `auth` payload.
+### Socket.io Event Channels:
+* `fatigue_event`: Real-time push payload dispatched to `io.to(companyId)` when drowsiness or micro-sleep is reported.
+* `fall_detected`: Dispatched to `io.to(companyId)` upon high G-force accelerometer or gyro drift detection.
+* `trip_status_change`: Dispatched when a driver starts or finishes a trip to update active vehicle counts instantly.
 
-**Incoming Dashboard Events:**
-* **`fatigue_event`**: Emitted when a driver triggers a drowsiness/microsleep threshold.
-* **`fall_detected`**: Emitted upon high G-force hardware sensor impact.
-* **`trip_status_change`**: Emitted when a driver starts or stops a shift, prompting the dashboard to instantly update the "Active Drivers" count.
+---
+
+## 📄 License
+This project is licensed under the ISC License.

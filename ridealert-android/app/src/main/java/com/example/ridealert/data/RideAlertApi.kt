@@ -80,7 +80,7 @@ interface RideAlertApi {
 
 // Retrofit Client
 object ApiClient {
-    private const val BASE_URL = "http://10.143.104.151:3000" // Pointing to your local Node.js server
+    private const val BASE_URL = "https://ridealert-backend-lo8w.onrender.com/" // Pointing to your local Node.js server
 
     val instance: RideAlertApi by lazy {
         Retrofit.Builder()

@@ -1,0 +1,82 @@
+﻿# ==========================================
+# RideAlert Master .gitignore
+# ==========================================
+
+# 1. Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 2. Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.env
+*/.env
+*/.env.*
+!*/.env.example
+
+# 3. IDEs & Code Editors
+.idea/
+*/.idea/
+*.iml
+*/.iml
+.vscode/
+*/.vscode/
+*.swp
+*.swo
+*~
+
+# 4. Build Outputs & Bundles
+dist/
+build/
+*/dist/
+*/build/
+.cache/
+.parcel-cache/
+.turbo/
+
+# 5. Android Specific
+.gradle/
+*/.gradle/
+local.properties
+*/local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+generated/
+
+# Keep Standalone Release APK tracked
+!apk/
+!apk/*.apk
+
+# 6. Scratch & Diagnostic Scripts
+scratch/
+*/scratch/
+scratch_*
+*/scratch_*
+
+# 7. Assistant Tools & Caches
+.agents/
+*/.agents/
+.claude/
+*/.claude/
+.cursor/
+*/.cursor/
+.devin/
+*/.devin/
+
+# 8. Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 9. Personal Notes & Non-project Documents
+interview_prep_script.*

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="50%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#E0115F" />
+    </linearGradient>
+    <linearGradient id="hShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="50%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <linearGradient id="hAlertGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF385C" />
+      <stop offset="100%" stop-color="#E0115F" />
+    </linearGradient>
+  </defs>
+
+  <!-- Left Emblem Group (Scaled to 160x160 inside 200x200 space) -->
+  <g transform="translate(30, 20) scale(0.31)">
+    <!-- Shield -->
+    <path d="M 256 70 C 342 70, 402 116, 410 208 C 418 300, 352 388, 256 448 C 160 388, 94 300, 102 208 C 110 116, 170 70, 256 70 Z" 
+          fill="none" stroke="url(#hShieldGrad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Road lines -->
+    <path d="M 188 416 L 236 304" stroke="#38BDF8" stroke-width="14" stroke-linecap="round" />
+    <path d="M 324 416 L 276 304" stroke="#38BDF8" stroke-width="14" stroke-linecap="round" />
+    <line x1="256" y1="408" x2="256" y2="354" stroke="#38BDF8" stroke-width="10" stroke-linecap="round" />
+    <!-- Eye -->
+    <path d="M 160 236 C 200 160, 312 160, 352 236" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" />
+    <path d="M 172 242 C 206 298, 306 298, 340 242" fill="none" stroke="#38BDF8" stroke-width="12" stroke-linecap="round" />
+    <circle cx="256" cy="228" r="42" fill="url(#hAlertGrad)" />
+    <circle cx="256" cy="228" r="18" fill="#FFFFFF" />
+  </g>
+
+  <!-- Right Typography Group -->
+  <!-- Ride (White / Dark Slate) -->
+  <text x="210" y="118" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="74" font-weight="900" fill="#FFFFFF" letter-spacing="-1.5">Ride<tspan fill="url(#textGrad)">Alert</tspan></text>
+  
+  <!-- Alert Pulse Dot on the 't' -->
+  <circle cx="568" cy="62" r="6" fill="#E0115F" />
+
+  <!-- Subtitle Tagline -->
+  <text x="214" y="152" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#94A3B8" letter-spacing="4">REAL-TIME DRIVER SAFETY ECOSYSTEM</text>
+</svg>

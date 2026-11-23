@@ -80,11 +80,19 @@ interface RideAlertApi {
 
 // Retrofit Client
 object ApiClient {
-    private const val BASE_URL = "https://ridealert-backend-lo8w.onrender.com/" // Pointing to your local Node.js server
+    private const val BASE_URL = "https://ridealert-backend-lo8w.onrender.com/"
+
+    private val okHttpClient = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
 
     val instance: RideAlertApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(RideAlertApi::class.java)

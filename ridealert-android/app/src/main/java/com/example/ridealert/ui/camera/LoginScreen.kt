@@ -95,7 +95,8 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
                         
                         coroutineScope.launch {
                             try {
-                                val response = ApiClient.instance.loginDriver(DriverLoginRequest(driverId))
+                                val trimmedDriverId = driverId.trim()
+                                val response = ApiClient.instance.loginDriver(DriverLoginRequest(trimmedDriverId))
                                 // Save token
                                 val sessionManager = SessionManager(context)
                                 sessionManager.saveAuthToken(response.token)
@@ -105,10 +106,22 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
                                 onLoginSuccess(response.driverId)
                             } catch (e: Exception) {
                                 isLoading = false
-                                if (e is HttpException && (e.code() == 401 || e.code() == 404)) {
-                                    errorMessage = "No matching Driver ID found. Please contact your Fleet Manager."
+                                android.util.Log.e("LoginScreen", "Login failed", e)
+                                if (e is HttpException) {
+                                    if (e.code() == 401 || e.code() == 404) {
+                                        errorMessage = "No matching Driver ID found. Please contact your Fleet Manager."
+                                    } else {
+                                        errorMessage = "Server error (${e.code()}). Please try again."
+                                    }
+                                } else if (e is java.net.SocketTimeoutException) {
+                                    errorMessage = "Server connection timed out. The server was waking up, please try again."
+                                } else if (e is java.net.UnknownHostException) {
+                                    errorMessage = "No internet connection. Please check your network."
+                                } else if (e is java.io.IOException) {
+                                    errorMessage = "Network error: Unable to reach server. Please try again."
                                 } else {
-                                    errorMessage = "Login failed: ${e.message}"
+                                    val msg = e.localizedMessage ?: e.message ?: e.javaClass.simpleName
+                                    errorMessage = "Login failed: $msg"
                                 }
                             }
                         }

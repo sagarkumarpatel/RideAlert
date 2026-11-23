@@ -13,7 +13,7 @@ The platform operates as a **Multi-Tenant SaaS architecture**, allowing transpor
 | **Web Dashboard** | **Vercel** | [Live Fleet Dashboard](https://ridealert-dashboard.vercel.app) |
 | **Backend API** | **Render (Node.js)** | [`https://ridealert-backend-lo8w.onrender.com`](https://ridealert-backend-lo8w.onrender.com) |
 | **Database** | **Neon (AWS US-East)** | Serverless PostgreSQL (Prisma ORM) |
-| **Android App** | **Standalone APK** | [📱 Download RideAlert.apk](./apk/RideAlert.apk) |
+| **Android App** | **Standalone APK** | [📱 **Direct 1-Click Download (24 MB)**](https://raw.githubusercontent.com/sagarkumarpatel/RideAlert/main/apk/RideAlert.apk) |
 
 ---
 
@@ -21,9 +21,11 @@ The platform operates as a **Multi-Tenant SaaS architecture**, allowing transpor
 
 You can install and run the standalone RideAlert mobile client directly on any Android device without Android Studio:
 
-### 📥 Download Links:
-* **Repository Link:** [Download `apk/RideAlert.apk`](./apk/RideAlert.apk)
-* **Direct GitHub Raw Download:** [https://github.com/sagarkumarpatel/RideAlert/raw/main/apk/RideAlert.apk](https://github.com/sagarkumarpatel/RideAlert/raw/main/apk/RideAlert.apk)
+### 📥 1-Click Direct Download:
+
+[![Direct Download APK](https://img.shields.io/badge/Direct_Download-RideAlert.apk_(24.9_MB)-10B981?style=for-the-badge&logo=android&logoColor=white)](https://raw.githubusercontent.com/sagarkumarpatel/RideAlert/main/apk/RideAlert.apk)
+
+👉 **[📲 Click Here to Instantly Download RideAlert.apk](https://raw.githubusercontent.com/sagarkumarpatel/RideAlert/main/apk/RideAlert.apk)** *(Starts downloading immediately in your browser — no GitHub preview page)*
 
 ### 📲 Quick Installation Steps:
 1. Download **`RideAlert.apk`** to your Android phone (via Chrome, WhatsApp, or Google Drive).
